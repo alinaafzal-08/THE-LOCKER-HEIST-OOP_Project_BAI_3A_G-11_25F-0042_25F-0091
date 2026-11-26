@@ -1,0 +1,45 @@
++============================================================+
+|          THE LOCKER HEIST  --  DETECTIVE GAME              |
++============================================================+
+
+  Developed By  :  Alina Afzal  |  25F-0042
+                   Samreen Kousar  |  25F-0091
+
+  Course        :  CL1004 Object Oriented Programming
+  Section       :  BAI - A
+  Semester      :  Fall 2026
+  Lab Instructor:  Sir Mozeb Ahmad Khan
+
++------------------------------------------------------------+
+|                    ABOUT THE GAME                          |
++------------------------------------------------------------+
+
+  The Locker Heist is a console-based detective mystery game.
+  A priceless artefact has been stolen from the mansion of
+  Mr. Leonardo. Seven suspects live under the same roof. Only
+  one of them is the culprit -- and you must find out who.
+
++------------------------------------------------------------+
+|                      YOUR MISSION                          |
++------------------------------------------------------------+
+
+  1. Search the mansion's locations for hidden letter clues.
+  2. Interview the suspects to gather more evidence.
+  3. Use the clues to form two secret words on your Tile Rack.
+  4. Identify the culprit from the word pair you have built.
+  5. Make your accusation before your credibility runs out.
+
++------------------------------------------------------------+
+|                     HOW TO BEGIN                           |
++------------------------------------------------------------+
+
+  From the Main Menu select:
+    [1] New Game      -- start a fresh investigation
+    [2] Leaderboard   -- see the top detectives
+    [3] About         -- you are reading this now
+    [4] Rules         -- game rules and scoring details
+    [5] Exit          -- quit the program
+
+  Good luck, Detective. The truth is hidden in the words.
+
++============================================================+

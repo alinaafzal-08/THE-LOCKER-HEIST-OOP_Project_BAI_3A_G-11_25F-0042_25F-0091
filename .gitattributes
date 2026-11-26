@@ -1,0 +1,3 @@
+# Normalise line endings to LF on commit and check out with native endings.
+# This prevents the classic Windows/Linux CRLF mismatch that breaks diffs.
+* text=auto

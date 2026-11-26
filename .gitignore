@@ -1,0 +1,31 @@
+# Visual Studio generated folders – these contain compiled binaries and
+# IDE-specific state that differ between machines and must not be committed.
+.vs/
+x64/
+Debug/
+Release/
+
+# Per-user Visual Studio settings – each developer has their own preferences,
+# so these are excluded to avoid overwriting a teammate's setup.
+*.user
+
+# Compiled object and debug output files – these are rebuilt from source
+# and should never be stored in version control.
+*.obj
+*.pdb
+*.ilk
+*.exe
+*.log
+*.tmp
+
+# Scratch and work directories used by test scripts – these hold temporary
+# files generated during test runs and are not part of the project source.
+tests/_scratch/
+tests/_work/
+
+# Submission package folder – generated only when preparing a ZIP for
+# submission; not part of normal development.
+submission/
+
+# NOTE: data files (clue.txt, locations.txt, etc.) and tests/results/ are
+# intentionally NOT ignored – they are part of the project.
