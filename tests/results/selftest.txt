@@ -1,0 +1,91 @@
+﻿
+========================================
+  ST-01  Foundation Self-Test
+========================================
+  [PASS] Tile default: tileLetter == ' '
+  [PASS] Tile default: filled == false
+  [PASS] Tile copy construction preserves fields
+  [PASS] Tile copy assignment preserves fields
+  [PASS] Clue default: clueLetter == ' '
+  [PASS] Clue default: cluePosition == 0
+  [PASS] Clue default: clueRow == Word1
+  [PASS] Clue copy construction preserves fields
+  [PASS] Clue copy assignment preserves fields
+  [PASS] Location default: locName == ""
+  [PASS] Location default: letterClueLoc == ' '
+  [PASS] Location default: boardPosLoc == 0
+  [PASS] Location default: locRow == Word1
+  [PASS] Location default: locSearchFlag == false
+  [PASS] Location copy construction preserves fields
+  [PASS] Location copy assignment preserves fields
+  [PASS] WordRow::Word1 == 0
+  [PASS] WordRow::Word2 == 1
+  [PASS] MenuChoice::NewGame == 1
+  [PASS] MenuChoice::ViewLeaderBoard == 2
+  [PASS] MenuChoice::About == 3
+  [PASS] MenuChoice::Rules == 4
+  [PASS] MenuChoice::Exit == 5
+  [PASS] GameState::Menu is distinct from all others
+  [PASS] GameState::Playing is distinct from Won, Lost, Exit
+  [PASS] GameState::Won is distinct from Lost and Exit
+  [PASS] GameState::Lost is distinct from Exit
+----------------------------------------
+  Result: 27 passed, 0 failed.
+========================================
+
+
+========================================
+  ST-02  Module 6 & 7 Self-Test
+========================================
+
+--- Part 1: Exception Hierarchy Polymorphic Tests ---
+  [PASS] InvalidInputException polymorphic catch, category, code
+  [PASS] FileNotFoundException polymorphic catch, category, code
+  [PASS] FileCorruptException polymorphic catch, category, code
+  [PASS] InvalidPositionException polymorphic catch, category, code
+  [PASS] SlotFilledException polymorphic catch, category, code
+  [PASS] InvalidLetterException polymorphic catch, category, code
+  [PASS] WordIncompleteException polymorphic catch, category, code
+  [PASS] InvalidWordException polymorphic catch, category, code
+  [PASS] RackFullException polymorphic catch, category, code
+  [PASS] RackEmptyException polymorphic catch, category, code
+  [PASS] InterviewRestrictedException polymorphic catch, category, code
+
+--- Part 2: StringUtils Tests ---
+  [PASS] StringUtils::trim strips spaces, tabs, and carriage returns
+  [PASS] StringUtils::splitByDelimiter parses 8-field line
+  [PASS] StringUtils::parseInt parses negative integer '-10'
+  [PASS] StringUtils::parseInt parses positive integer '25'
+  [PASS] StringUtils::parseInt throws InvalidInputException on 'abc'
+  [PASS] StringUtils::padWithZeros(5, 2) == '05'
+  [PASS] StringUtils::spaceToUnderscore('Partner 1') == 'Partner_1'
+  [PASS] StringUtils::underscoreToSpace('Bedroom_1') == 'Bedroom 1'
+  [PASS] StringUtils::currentDateDDMMYY matches DD-MM-YY pattern
+  [PASS] StringUtils::formatPersonName inserts space after Mr.
+  [PASS] StringUtils::formatPlaceName converts underscores to spaces
+
+--- Part 3: DataLoader Authentic File Verification ---
+  [PASS] DataLoader::loadClueProfiles loaded 7 profiles
+  [PASS] DataLoader::loadLocations loaded 7 locations
+  [PASS] DataLoader::loadCharacters loaded 8 characters
+  [PASS] DataLoader::loadRules loaded 25 turns, 100 cred, -5, -10 penalties
+  [PASS] DataLoader::loadAboutText loaded non-empty content
+  [PASS] DataLoader::validateConsistency passed on authentic dataset
+  [PASS] DataLoader::roleToColumn('Partner 2') == 4
+
+--- Part 4: DataLoader Corruption Detection Tests ---
+  [PASS] Corruption Case 1: Missing file throws FileNotFoundException
+  [PASS] Corruption Case 2: Wrong heading throws FileCorruptException
+  [PASS] Corruption Case 3: 5-field clue row throws FileCorruptException
+  [PASS] Corruption Case 4: 6-letter Word 1 throws FileCorruptException
+  [PASS] Corruption Case 5: Digit as letter throws FileCorruptException
+  [PASS] Corruption Case 6: Duplicate W1Pos throws FileCorruptException
+  [PASS] Corruption Case 7: W2Pos = 9 throws FileCorruptException
+  [PASS] Corruption Case 8: isCulprit = 1 throws FileCorruptException
+  [PASS] Corruption Case 9: Missing Max_Turns key throws FileCorruptException
+  [PASS] Corruption Case 10: Non-numeric rule value throws FileCorruptException
+  [PASS] Corruption Case 11: Inconsistent letter throws FileCorruptException
+----------------------------------------
+  Result: 40 passed, 0 failed.
+========================================
+

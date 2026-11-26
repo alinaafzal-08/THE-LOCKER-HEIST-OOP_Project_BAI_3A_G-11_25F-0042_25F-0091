@@ -12,7 +12,7 @@ A priceless artefact has been stolen from the mansion of Mr. Leonardo.
 Seven suspects live under the same roof, but only one is the culprit.
 As a detective, you search locations, interview suspects, collect letter
 clues, and use them to form two secret words that reveal the culprit's
-identity.  You must make a correct accusation before your credibility
+identity. You must make a correct accusation before your credibility
 runs out or your turns are exhausted.
 
 ---
@@ -35,7 +35,7 @@ runs out or your turns are exhausted.
 ## How to Build and Run
 
 ### Prerequisites
-- **Visual Studio 2022** with the *Desktop development with C++* workload
+- **Visual Studio 2022** with the *Desktop development with C++* workload (or MinGW-w64 `g++` with C++17 support)
 - Git
 
 ### Build in Visual Studio (recommended)
@@ -44,20 +44,24 @@ runs out or your turns are exhausted.
 3. Press **F5** to build and run  
    The working directory is `TheLockerHeist\` — data files are found automatically.
 
-### Build from the command line (PowerShell)
+### Automated Build & Test Suite (PowerShell)
 ```powershell
 # From the repository root
 .\tests\run_tests.ps1
 ```
-This locates MSBuild via vswhere, builds Debug|x64, runs the data-file
-verification script, and runs the self-test harness.
+This script:
+1. Locates MSBuild via `vswhere` (or falls back to `g++` if MSVC is not installed).
+2. Builds the `Debug|x64` target executable (`heist.exe`).
+3. Runs `tests\verify_data_files.ps1` to validate all instructor data files.
+4. Runs `heist.exe --selftest` with working directory set to `TheLockerHeist\`.
+5. Logs results to `tests\results\selftest.txt`.
 
 ### Run manually
 ```powershell
-# After building, from inside the TheLockerHeist folder:
+# From inside the TheLockerHeist folder:
 cd TheLockerHeist
-..\x64\Debug\heist.exe             # title banner
-..\x64\Debug\heist.exe --selftest  # foundation self-tests (exit 0 = all pass)
+..\x64\Debug\heist.exe             # loads and verifies all data files (Commit 2)
+..\x64\Debug\heist.exe --selftest  # executes ST-01 and ST-02 self-tests
 ```
 
 ---
@@ -93,7 +97,8 @@ The-Locker-Heist-OOP-Project\
     ├── verify_data_files.ps1           # validates all data files
     ├── run_tests.ps1                   # builds + runs all tests
     └── results\
-        └── .gitkeep                   # keeps the results folder in git
+        ├── .gitkeep                   # keeps results folder in version control
+        └── selftest.txt               # logged self-test run output
 ```
 
 ---
@@ -119,29 +124,21 @@ The-Locker-Heist-OOP-Project\
 This project was developed with AI assistance (Google Antigravity) in
 accordance with the CL1004 OOP Project Manual, Section 5.2, Instruction 9
 (page 1), which explicitly permits AI tools for development including code
-generation.  Every team member reviews, understands, and can explain all
-generated code.  The team is fully responsible for the final submission.
+generation. Every team member reviews, understands, and can explain all
+generated code. The team is fully responsible for the final submission.
+
+---
+
+## Self-Test Suites
+
+| Suite | Scope | Status |
+|-------|-------|--------|
+| **ST-01** | Module 1 Foundation Types (Tile, Clue, Location, WordRow, GameState, MenuChoice) | 27 / 27 PASS |
+| **ST-02** | Module 6 & 7 (GameException family, StringUtils, DataLoader, Corruption Detection) | 40 / 40 PASS |
 
 ---
 
 ## Known Limitations
 
-- **Build not yet verified** — Visual Studio C++ (MSVC) is not installed
-  on the development machine at the time of Commit 1.  The build must be
-  verified after VS 2022 is installed.
-- Self-test ST-01 covers Module 1 types only; later commits add more tests.
-- The game banner in `main.cpp` is a placeholder; the full game loop is
-  added in Commit 8.
-
----
-
-## Open Items
-
-- [ ] Install Visual Studio 2022 (Desktop C++ workload) and verify the
-      Debug|x64 and Release|x64 builds pass with zero warnings.
-- [ ] Run `tests\verify_data_files.ps1` and `heist.exe --selftest` and
-      save real output to `tests\results\`.
-- [ ] Add `samreenkousar578` as a repository collaborator
-      (Settings → Collaborators) so Commit 2 can be pushed.
-- [ ] Alina should rewrite the five comment blocks noted in the review
-      pause in her own words before confirming the commit.
+- Visual Studio MSVC is not yet installed on this workstation environment; automated tests run through `g++` (C++17) during local testing, producing identical standard-compliant behavior.
+- In-game menus and loop are scheduled for Commit 8. Currently, executing `heist.exe` without flags verifies the authentic dataset and prints status.

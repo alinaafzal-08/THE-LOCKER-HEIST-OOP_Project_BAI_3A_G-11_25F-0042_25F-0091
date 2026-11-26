@@ -1,6 +1,6 @@
 # Class Inventory — The Locker Heist
 **Binding architecture contract.  Names, visibilities, and relationships here govern every commit.**
-Last updated: Commit 1 (Alina Afzal, 25F-0042).
+Last updated: Commit 2 (Samreen Kousar, 25F-0091).
 
 ---
 
@@ -17,52 +17,52 @@ Last updated: Commit 1 (Alina Afzal, 25F-0042).
 | `Clue` | `struct` | `char clueLetter=' '`; `int cluePosition=0`; `WordRow clueRow=Word1` | Letter hint discovered during investigation |
 | `Location` | `struct` | `std::string locName=""`; `char letterClueLoc=' '`; `int boardPosLoc=0`; `WordRow locRow=Word1`; `bool locSearchFlag=false` | One searchable room in the mansion |
 
-### Defined in Commit 2 (`heist.h`)
+### Implemented in Commit 2 (`heist.h`, `heist.cpp`)
 
 | Item | Kind | Fields | Notes |
 |------|------|--------|-------|
-| `RulesConfig` | `struct` | `int maxTurns`; `int startingCredibility`; `int wrongTurnPenalty`; `int wrongWordPenalty`; `std::string winCondition`; `std::string loseCondition` | Loaded from rules.txt; penalties stored signed |
-| `ClueProfile` | `struct` | `std::string culpritRole`; `std::string word1`; `std::string word2` | One row of clue.txt |
-| `LocationRecord` | `struct` | `std::string placeName`; `int word1Pos`; `char letters[7]` | One row of locations.txt; letter column order: Cook[0]…Child[6] |
-| `CharacterRecord` | `struct` | `std::string name`; `std::string role`; `std::string nationality`; `int word2Pos`; `char letters[7]`; `bool isCulprit` | One row of characters.txt; same column order |
+| `RulesConfig` | `struct` | `int maxTurns=25; int startingCredibility=100; int wrongTurnPenalty=-5; int wrongWordPenalty=-10; std::string winCondition; std::string loseCondition; static RulesConfig defaultRules();` | Loaded from rules.txt; penalties stored signed negative |
+| `ClueProfile` | `struct` | `std::string culpritRole; std::string word1; std::string word2;` | One row of clue.txt (7-letter word1, 8-letter word2) |
+| `LocationRecord` | `struct` | `std::string placeName; int word1Pos; char letters[7];` | One row of locations.txt; letter column order: Cook[0]…Child[6] |
+| `CharacterRecord` | `struct` | `std::string name; std::string role; std::string nationality; int word2Pos; char letters[7]; bool isCulprit;` | One row of characters.txt; same column order; isCulprit initialized false |
 
 ---
 
-## Exception Hierarchy — Commit 2
+## Exception Hierarchy — Implemented in Commit 2 (Module 7)
 
-All exceptions inherit from `GameException`.
+All exceptions inherit from `GameException` (built from scratch, not derived from `std::exception`). Thrown by value, caught polymorphically by reference (`const GameException&`).
 
 ```
-GameException (message, errorCode; virtual destructor; getMessage(); getErrorCode(); getCategory())
-├── InvalidInputException
-├── FileNotFoundException
-├── FileCorruptException
-├── InvalidPositionException
-├── SlotFilledException
-├── InvalidLetterException
-├── WordIncompleteException
-├── InvalidWordException
-├── RackFullException
-├── RackEmptyException
-└── InterviewRestrictedException
+GameException (protected: message, errorCode; virtual ~GameException(); getMessage(); getErrorCode(); virtual getCategory())
+├── InvalidInputException (code 101, "Invalid Input")
+├── FileNotFoundException (code 102, "File Not Found")
+├── FileCorruptException (code 103, "File Corrupt")
+├── InvalidPositionException (code 104, "Invalid Position")
+├── SlotFilledException (code 105, "Slot Filled")
+├── InvalidLetterException (code 106, "Invalid Letter")
+├── WordIncompleteException (code 107, "Word Incomplete")
+├── InvalidWordException (code 108, "Invalid Word")
+├── RackFullException (code 109, "Rack Full")
+├── RackEmptyException (code 110, "Rack Empty")
+└── InterviewRestrictedException (code 111, "Interview Restricted")
 ```
 
 ---
 
-## Utilities — Commit 2
+## Utilities — Implemented in Commit 2 (Module 6)
 
-| Class | Kind | Responsibility |
-|-------|------|---------------|
-| `StringUtils` | `static` | String helpers (split, trim, toUpper, etc.) written without STL algorithms |
-| `DataLoader` | `static` | Reads clue.txt, locations.txt, characters.txt, rules.txt; throws on error |
+| Class | Kind | Responsibility & Methods |
+|-------|------|--------------------------|
+| `StringUtils` | `static` | `trim()`, `splitByDelimiter()`, `toUpperCase()`, `isAllLetters()`, `isSingleLetter()`, `parseInt()`, `intToString()`, `padWithZeros()`, `equalsIgnoreCase()`, `replaceChar()`, `underscoreToSpace()`, `spaceToUnderscore()`, `currentDateDDMMYY()`, `formatPersonName()`, `formatPlaceName()`. Implemented without `<cctype>`, `<algorithm>`, or `<sstream>`. |
+| `DataLoader` | `static` | Constants: `FILE_RULES`, `FILE_CLUE`, `FILE_LOCATIONS`, `FILE_CHARACTERS`, `FILE_ABOUT`, `FILE_SCOREBOARD`. Dimensions: `ROLE_COUNT=7`, `LOCATION_COUNT=7`, `CHARACTER_COUNT=8`, `WORD1_LENGTH=7`, `WORD2_LENGTH=8`. Methods: `loadRules()`, `loadClueProfiles()`, `loadLocations()`, `loadCharacters()`, `loadAboutText()`, `validateConsistency()`, `roleToColumn()`. Strictly validates data format and throws `FileNotFoundException` or `FileCorruptException`. |
 
-### Commit 7
+### Scheduled for Commit 7
 
 | Class | Kind | Responsibility |
 |-------|------|---------------|
 | `ScoreBoard` | `static` | Reads and writes `leader/scoreBoard.txt`; formats two-digit turns and DD-MM-YY dates |
 
-### Commit 8
+### Scheduled for Commit 8
 
 | Class | Kind | Responsibility |
 |-------|------|---------------|
@@ -70,7 +70,7 @@ GameException (message, errorCode; virtual destructor; getMessage(); getErrorCod
 
 ---
 
-## Character Hierarchy — Commit 3
+## Character Hierarchy — Scheduled for Commit 3
 
 ```
 Character  [abstract; private: name, role, nationality, isCulprit; friend GameEngine]
@@ -138,3 +138,4 @@ Character  [abstract; private: name, role, nationality, isCulprit; friend GameEn
 - `GameEngine` constructor: **private** (Singleton)
 - `CharacterFactory::create`: **public static**
 - `DataLoader` and `StringUtils` members: **public static**
+- `GameException` data members: **protected**
