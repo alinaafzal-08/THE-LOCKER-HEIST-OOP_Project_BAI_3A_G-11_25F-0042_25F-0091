@@ -1,6 +1,6 @@
 # Class Inventory — The Locker Heist
 **Binding architecture contract.  Names, visibilities, and relationships here govern every commit.**
-Last updated: Commit 2 (Samreen Kousar, 25F-0091).
+Last updated: Commit 3 (Alina Afzal, 25F-0042).
 
 ---
 
@@ -70,28 +70,30 @@ GameException (protected: message, errorCode; virtual ~GameException(); getMessa
 
 ---
 
-## Character Hierarchy — Scheduled for Commit 3
+## Character Hierarchy — Implemented in Commit 3 (Module 3 & 9)
 
 ```
-Character  [abstract; private: name, role, nationality, isCulprit; friend GameEngine]
+Character  [abstract; private: characterName, characterRole, nationality, isCulprit, liveCount; friend GameEngine]
 │  pure virtual: display(std::ostream&) const
-│  virtual:      getMinimumCredibility(); getClue()
+│  virtual:      getMinimumCredibility(); hasClue(); getClue()
+│  static:       getLiveCount()
 │
-├── Victim
-├── Detective  [credibility, turns; solvedWords heap array[2]; racks from C5]
-└── Suspect  [abstract]
-    ├── HouseHelp  [abstract]
-    │   ├── Cook
-    │   ├── Guard
-    │   └── Servant
-    ├── BusinessRelations  [virtual public Suspect]
-    ├── CloseRelations     [virtual public Suspect]
-    ├── Partner            [BusinessRelations]
-    ├── PA                 [BusinessRelations AND CloseRelations — diamond]
-    └── Child              [CloseRelations; age const = 17, validated 15–19]
+├── Victim             [minCred: 80; overrides hasClue (true), getClue (Word2), display]
+├── Detective          [credibility, turns, dynamic string* solvedWords[2]; deep copy ctor & op=; Malay default; minCred: 0]
+└── Suspect            [abstract; public Character; private: letterClueChar, boardPosChar, clueRowChar; hasClue (true), getClue]
+    ├── HouseHelp      [public Suspect; minCred: 0]
+    │   ├── Cook       [public HouseHelp; minCred: 0]
+    │   ├── Guard      [public HouseHelp; minCred: 0]
+    │   └── Servant    [public HouseHelp; minCred: 0]
+    ├── BusinessRelations  [virtual public Suspect; minCred: 0]
+    ├── CloseRelations     [virtual public Suspect; minCred: 0]
+    ├── Partner        [public BusinessRelations; partnerNumber (1 or 2); minCred: 50]
+    ├── PA             [public BusinessRelations, public CloseRelations; diamond resolved via virtual Suspect; minCred: 35]
+    └── Child          [public CloseRelations; static const DEFAULT_AGE=17; age validated 15-19; minCred: 75]
 ```
 
-**CharacterFactory** — `static` create method; Commit 3.
+**CharacterFactory** — `static Character* create(const CharacterRecord& record, int culpritColumn);`
+Sole polymorphic construction hub based on role strings; throws `InvalidInputException` for unknown roles.
 
 ---
 

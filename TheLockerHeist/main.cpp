@@ -1,12 +1,13 @@
 // ============================================================
 // main.cpp  --  THE LOCKER HEIST
-// Driver and self-test harness for Commit 2.
+// Driver and self-test harness for Commit 3.
 //
 // Operating modes:
 //   heist.exe             -- Verifies data files via DataLoader and displays
 //                            the banner with "Data files verified: OK".
-//   heist.exe --selftest  -- Executes ST-01 (foundation tests) and
-//                            ST-02 (exceptions, StringUtils, DataLoader).
+//   heist.exe --selftest  -- Executes ST-01 (foundation tests),
+//                            ST-02 (exceptions, StringUtils, DataLoader),
+//                            and ST-03 (character hierarchy, diamond, factory).
 //                            Exits with 0 if all tests pass, 1 if any fail.
 // ============================================================
 
@@ -157,11 +158,6 @@ static int runFoundationSelfTest()
 
 // ------------------------------------------------------------
 // runDataLoaderSelfTest()  --  ST-02 (Commit 2)
-// Tests:
-//   1. Polymorphic throw/catch on all 11 GameException types.
-//   2. StringUtils helper methods (trim, split, parseInt, pad, format).
-//   3. DataLoader loading authentic game files.
-//   4. DataLoader corruption detection on fixture files.
 // ------------------------------------------------------------
 static int runDataLoaderSelfTest()
 {
@@ -172,9 +168,7 @@ static int runDataLoaderSelfTest()
     std::cout << "  ST-02  Module 6 & 7 Self-Test\n";
     std::cout << "========================================\n";
 
-    // --------------------------------------------------------
     // Part 1: GameException family throw and polymorphic catch
-    // --------------------------------------------------------
     std::cout << "\n--- Part 1: Exception Hierarchy Polymorphic Tests ---\n";
     try { throw InvalidInputException("bad input"); }
     catch (const GameException& e)
@@ -253,9 +247,7 @@ static int runDataLoaderSelfTest()
               "InterviewRestrictedException polymorphic catch, category, code", passed, failed);
     }
 
-    // --------------------------------------------------------
     // Part 2: StringUtils unit tests
-    // --------------------------------------------------------
     std::cout << "\n--- Part 2: StringUtils Tests ---\n";
     {
         std::string s = " \r\t hello \r\n";
@@ -305,9 +297,7 @@ static int runDataLoaderSelfTest()
               "StringUtils::formatPlaceName converts underscores to spaces", passed, failed);
     }
 
-    // --------------------------------------------------------
     // Part 3: DataLoader loading authentic game files
-    // --------------------------------------------------------
     std::cout << "\n--- Part 3: DataLoader Authentic File Verification ---\n";
     ClueProfile profiles[DataLoader::ROLE_COUNT];
     LocationRecord locations[DataLoader::LOCATION_COUNT];
@@ -345,9 +335,7 @@ static int runDataLoaderSelfTest()
     check(DataLoader::roleToColumn("Partner 2") == 4,
           "DataLoader::roleToColumn('Partner 2') == 4", passed, failed);
 
-    // --------------------------------------------------------
     // Part 4: DataLoader corruption detection test fixtures
-    // --------------------------------------------------------
     std::cout << "\n--- Part 4: DataLoader Corruption Detection Tests ---\n";
 
     // 1. Missing file -> FileNotFoundException
@@ -525,7 +513,6 @@ static int runDataLoaderSelfTest()
         {
             corruptedLocations[i] = locations[i];
         }
-        // Mutate Cook's clue letter at Bedroom_1 from 'A' to 'Z'
         corruptedLocations[0].letters[0] = 'Z';
 
         bool caught = false;
@@ -545,6 +532,212 @@ static int runDataLoaderSelfTest()
 }
 
 // ------------------------------------------------------------
+// runCharacterHierarchySelfTest()  --  ST-03 (Commit 3)
+// ------------------------------------------------------------
+static int runCharacterHierarchySelfTest()
+{
+    int passed = 0;
+    int failed = 0;
+
+    std::cout << "\n========================================\n";
+    std::cout << "  ST-03  Character Hierarchy Self-Test\n";
+    std::cout << "========================================\n";
+
+    int initialLive = Character::getLiveCount();
+
+    // 1. Build all 8 characters from authentic characters.txt with culpritColumn = 5 (PA)
+    CharacterRecord charRecords[DataLoader::CHARACTER_COUNT];
+    int loaded = DataLoader::loadCharacters(DataLoader::FILE_CHARACTERS, charRecords, DataLoader::CHARACTER_COUNT);
+    check(loaded == 8, "ST-03: Loaded 8 character records for factory construction", passed, failed);
+
+    Character* roster[8] = { nullptr };
+    for (int i = 0; i < 8; ++i)
+    {
+        roster[i] = CharacterFactory::create(charRecords[i], 5);
+    }
+    check(Character::getLiveCount() == initialLive + 8,
+          "ST-03: CharacterFactory constructed 8 instances; liveCount incremented by 8", passed, failed);
+
+    // 2. Base pointer display() runtime polymorphism
+    std::cout << "\n--- Polymorphic display() outputs ---\n";
+    for (int i = 0; i < 8; ++i)
+    {
+        std::cout << "  ";
+        roster[i]->display(std::cout);
+        std::cout << "\n";
+    }
+    check(true, "ST-03: Polymorphic display() executed without exception", passed, failed);
+
+    // 3. getMinimumCredibility() values in file order: 80, 0, 0, 0, 75, 50, 50, 35
+    int expectedCreds[8] = { 80, 0, 0, 0, 75, 50, 50, 35 };
+    bool allCredsMatch = true;
+    for (int i = 0; i < 8; ++i)
+    {
+        if (roster[i]->getMinimumCredibility() != expectedCreds[i])
+        {
+            allCredsMatch = false;
+        }
+    }
+    check(allCredsMatch,
+          "ST-03: getMinimumCredibility() values match expected sequence (80, 0, 0, 0, 75, 50, 50, 35)",
+          passed, failed);
+
+    // 4. getClue on Victim returns letter 'P', pos 1, WordRow::Word2 for column 5 (PA)
+    {
+        Clue vClue = roster[0]->getClue();
+        check(vClue.clueLetter == 'P' && vClue.cluePosition == 1 && vClue.clueRow == WordRow::Word2,
+              "ST-03: Victim getClue() returns letter 'P' at position 1 (Word2)", passed, failed);
+    }
+
+    // 5. getClue on Detective throws InvalidInputException
+    {
+        Detective testDetective("Sherlock", 100);
+        bool threwDetClue = false;
+        try
+        {
+            testDetective.getClue();
+        }
+        catch (const InvalidInputException&)
+        {
+            threwDetClue = true;
+        }
+        check(threwDetClue,
+              "ST-03: Detective getClue() throws InvalidInputException", passed, failed);
+    }
+
+    // 6 & 7. Diamond inheritance address resolution and single-object live counting
+    {
+        int liveBeforePA = Character::getLiveCount();
+        PA* paObj = new PA("Mr.Jad", "Egyptian", 'S', 8);
+
+        check(Character::getLiveCount() == liveBeforePA + 1,
+              "ST-03: Constructing one PA increases liveCount by exactly 1 (virtual inheritance)", passed, failed);
+
+        BusinessRelations* br = paObj;
+        CloseRelations* cr    = paObj;
+        Suspect* s1           = br;
+        Suspect* s2           = cr;
+        check(s1 == s2,
+              "ST-03: Diamond ambiguity resolved: BusinessRelations* and CloseRelations* resolve to identical Suspect*",
+              passed, failed);
+
+        // Virtual destructor check via base pointer
+        Character* charBase = paObj;
+        delete charBase;
+        check(Character::getLiveCount() == liveBeforePA,
+              "ST-03: Deleting PA via Character* virtual destructor restores liveCount", passed, failed);
+    }
+
+    // 8. Detective deep copy semantics, self-assignment, and reduceCredibility
+    {
+        Detective original("Dupin", 100);
+        original.setSolvedWord(WordRow::Word1, "PHARAOH");
+        original.addTurn();
+        original.addTurn();
+
+        Detective copyDet = original; // Deep copy constructor
+        Detective assignDet("Other", 50);
+        assignDet = original;         // Deep copy assignment
+
+        copyDet.setSolvedWord(WordRow::Word1, "MUTATED");
+        assignDet.setSolvedWord(WordRow::Word1, "CHANGED");
+
+        check(original.getSolvedWord(WordRow::Word1) == "PHARAOH",
+              "ST-03: Detective deep copy: mutating copy leaves original solvedWords intact", passed, failed);
+        check(copyDet.getSolvedWord(WordRow::Word1) == "MUTATED" &&
+              assignDet.getSolvedWord(WordRow::Word1) == "CHANGED",
+              "ST-03: Detective deep copy: copies manage independent heap memory", passed, failed);
+        check(original.getTurnsUsed() == 2 && copyDet.getTurnsUsed() == 2,
+              "ST-03: Detective turn counters copied properly", passed, failed);
+
+        // Self assignment
+        original = original;
+        check(original.getSolvedWord(WordRow::Word1) == "PHARAOH",
+              "ST-03: Detective self-assignment safe", passed, failed);
+
+        // reduceCredibility
+        original.reduceCredibility(30);
+        check(original.getCredibility() == 70,
+              "ST-03: Detective reduceCredibility(30) reduces 100 to 70", passed, failed);
+        original.reduceCredibility(100);
+        check(original.getCredibility() == 0,
+              "ST-03: Detective reduceCredibility(100) clamps at 0", passed, failed);
+    }
+
+    // 9. Child age validation (14 and 20 throw InvalidInputException)
+    {
+        bool threw14 = false;
+        try
+        {
+            Child c14("Baby", "French", 'X', 1, 14);
+        }
+        catch (const InvalidInputException&)
+        {
+            threw14 = true;
+        }
+        check(threw14, "ST-03: Child age 14 throws InvalidInputException", passed, failed);
+
+        bool threw20 = false;
+        try
+        {
+            Child c20("Adult", "French", 'X', 1, 20);
+        }
+        catch (const InvalidInputException&)
+        {
+            threw20 = true;
+        }
+        check(threw20, "ST-03: Child age 20 throws InvalidInputException", passed, failed);
+
+        bool validChild = false;
+        try
+        {
+            Child cValid("ValidChild", "French", 'X', 1, 17);
+            validChild = (cValid.getAge() == 17);
+        }
+        catch (...)
+        {
+            validChild = false;
+        }
+        check(validChild, "ST-03: Child age 17 constructs successfully", passed, failed);
+    }
+
+    // 10. CharacterFactory throws on unknown role
+    {
+        bool threwUnknown = false;
+        CharacterRecord badRec;
+        badRec.name        = "Unknown";
+        badRec.role        = "Astronaut";
+        badRec.nationality = "Moon";
+        badRec.word2Pos    = 1;
+        try
+        {
+            Character* ptr = CharacterFactory::create(badRec, 5);
+            delete ptr;
+        }
+        catch (const InvalidInputException&)
+        {
+            threwUnknown = true;
+        }
+        check(threwUnknown, "ST-03: CharacterFactory throws InvalidInputException on unknown role", passed, failed);
+    }
+
+    // Clean up roster through Character* base pointers
+    for (int i = 0; i < 8; ++i)
+    {
+        delete roster[i];
+        roster[i] = nullptr;
+    }
+    check(Character::getLiveCount() == initialLive,
+          "ST-03: Deleting all 8 characters via Character* base restores original liveCount", passed, failed);
+
+    std::cout << "----------------------------------------\n";
+    std::cout << "  Result: " << passed << " passed, " << failed << " failed.\n";
+    std::cout << "========================================\n\n";
+
+    return failed;
+}
+
+// ------------------------------------------------------------
 // main()
 // ------------------------------------------------------------
 int main(int argc, char* argv[])
@@ -555,6 +748,7 @@ int main(int argc, char* argv[])
         int totalFailures = 0;
         totalFailures += runFoundationSelfTest();
         totalFailures += runDataLoaderSelfTest();
+        totalFailures += runCharacterHierarchySelfTest();
         return (totalFailures > 0) ? 1 : 0;
     }
 

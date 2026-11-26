@@ -5,6 +5,7 @@
 //   - GameException family
 //   - StringUtils static methods
 //   - DataLoader file loaders and consistency validator
+//   - Character hierarchy and CharacterFactory
 // ============================================================
 
 #include "heist.h"
@@ -979,5 +980,551 @@ void DataLoader::validateConsistency(const ClueProfile profiles[],
                 "Inconsistent Word 2 for role " + prof.culpritRole +
                 ": characters spell '" + builtW2 + "', but clue profile specifies '" + prof.word2 + "'");
         }
+    }
+}
+
+
+// ============================================================
+// SECTION 5 -- CHARACTER HIERARCHY IMPLEMENTATIONS (Commit 3)
+// ============================================================
+
+// Static live-object counter initialization
+int Character::liveCount = 0;
+
+// Default nationality for Detective
+const std::string Detective::DEFAULT_NATIONALITY = "Malay";
+
+// Character Base Implementation
+Character::Character(const std::string& name, const std::string& role, const std::string& nat)
+    : characterName(name), characterRole(role), nationality(nat), isCulprit(false)
+{
+    ++liveCount;
+}
+
+Character::Character(const Character& other)
+    : characterName(other.characterName),
+      characterRole(other.characterRole),
+      nationality(other.nationality),
+      isCulprit(other.isCulprit)
+{
+    ++liveCount;
+}
+
+Character& Character::operator=(const Character& other)
+{
+    if (this != &other)
+    {
+        characterName = other.characterName;
+        characterRole = other.characterRole;
+        nationality   = other.nationality;
+        isCulprit     = other.isCulprit;
+    }
+    return *this;
+}
+
+Character::~Character()
+{
+    --liveCount;
+}
+
+std::string Character::getName() const
+{
+    return characterName;
+}
+
+std::string Character::getRole() const
+{
+    return characterRole;
+}
+
+std::string Character::getNationality() const
+{
+    return nationality;
+}
+
+bool Character::getIsCulprit() const
+{
+    return isCulprit;
+}
+
+int Character::getMinimumCredibility() const
+{
+    return 0;
+}
+
+bool Character::hasClue() const
+{
+    return false;
+}
+
+Clue Character::getClue() const
+{
+    throw InvalidInputException("Character does not possess a clue: " + characterName);
+}
+
+int Character::getLiveCount()
+{
+    return liveCount;
+}
+
+
+// Victim Implementation
+Victim::Victim(const std::string& name, const std::string& nat, char letter, int pos)
+    : Character(name, "Victim", nat),
+      letterClueChar(letter),
+      boardPosChar(pos),
+      clueRowChar(WordRow::Word2)
+{
+}
+
+Victim::~Victim()
+{
+}
+
+char Victim::getLetterClue() const
+{
+    return letterClueChar;
+}
+
+int Victim::getBoardPos() const
+{
+    return boardPosChar;
+}
+
+WordRow Victim::getClueRow() const
+{
+    return clueRowChar;
+}
+
+void Victim::display(std::ostream& out) const
+{
+    out << StringUtils::formatPersonName(getName())
+        << " [Victim] - Nationality: " << getNationality();
+}
+
+bool Victim::hasClue() const
+{
+    return true;
+}
+
+Clue Victim::getClue() const
+{
+    Clue c;
+    c.clueLetter   = letterClueChar;
+    c.cluePosition = boardPosChar;
+    c.clueRow      = clueRowChar;
+    return c;
+}
+
+int Victim::getMinimumCredibility() const
+{
+    return 80;
+}
+
+
+// Detective Implementation
+Detective::Detective(const std::string& name, int startingCredibility)
+    : Character(name, "Detective", DEFAULT_NATIONALITY),
+      credibility(startingCredibility),
+      turns(0)
+{
+    solvedWords = new std::string[2];
+    solvedWords[0] = "";
+    solvedWords[1] = "";
+}
+
+Detective::Detective(const Detective& other)
+    : Character(other),
+      credibility(other.credibility),
+      turns(other.turns)
+{
+    solvedWords = new std::string[2];
+    solvedWords[0] = other.solvedWords[0];
+    solvedWords[1] = other.solvedWords[1];
+}
+
+Detective& Detective::operator=(const Detective& other)
+{
+    if (this != &other)
+    {
+        Character::operator=(other);
+        credibility    = other.credibility;
+        turns          = other.turns;
+        solvedWords[0] = other.solvedWords[0];
+        solvedWords[1] = other.solvedWords[1];
+    }
+    return *this;
+}
+
+Detective::~Detective()
+{
+    delete[] solvedWords;
+    solvedWords = nullptr;
+}
+
+int Detective::getCredibility() const
+{
+    return credibility;
+}
+
+void Detective::reduceCredibility(int amount)
+{
+    if (amount <= 0)
+    {
+        return;
+    }
+    if (credibility <= amount)
+    {
+        credibility = 0;
+    }
+    else
+    {
+        credibility -= amount;
+    }
+}
+
+void Detective::addTurn()
+{
+    ++turns;
+}
+
+int Detective::getTurnsUsed() const
+{
+    return turns;
+}
+
+void Detective::setSolvedWord(WordRow row, const std::string& word)
+{
+    solvedWords[static_cast<int>(row)] = word;
+}
+
+std::string Detective::getSolvedWord(WordRow row) const
+{
+    return solvedWords[static_cast<int>(row)];
+}
+
+bool Detective::isRowSolved(WordRow row) const
+{
+    return !solvedWords[static_cast<int>(row)].empty();
+}
+
+bool Detective::areBothSolved() const
+{
+    return isRowSolved(WordRow::Word1) && isRowSolved(WordRow::Word2);
+}
+
+void Detective::display(std::ostream& out) const
+{
+    out << StringUtils::formatPersonName(getName())
+        << " [Detective] - Credibility: " << credibility
+        << ", Turns: " << turns
+        << ", Solved: [" << solvedWords[0] << ", " << solvedWords[1] << "]";
+}
+
+
+// Suspect Abstract Implementation
+Suspect::Suspect(const std::string& name, const std::string& role, const std::string& nat,
+                 char letter, int pos)
+    : Character(name, role, nat),
+      letterClueChar(letter),
+      boardPosChar(pos),
+      clueRowChar(WordRow::Word2)
+{
+}
+
+Suspect::~Suspect()
+{
+}
+
+char Suspect::getLetterClue() const
+{
+    return letterClueChar;
+}
+
+void Suspect::setLetterClue(char c)
+{
+    letterClueChar = c;
+}
+
+int Suspect::getBoardPos() const
+{
+    return boardPosChar;
+}
+
+void Suspect::setBoardPos(int p)
+{
+    boardPosChar = p;
+}
+
+WordRow Suspect::getClueRow() const
+{
+    return clueRowChar;
+}
+
+void Suspect::setClueRow(WordRow r)
+{
+    clueRowChar = r;
+}
+
+bool Suspect::hasClue() const
+{
+    return true;
+}
+
+Clue Suspect::getClue() const
+{
+    Clue c;
+    c.clueLetter   = letterClueChar;
+    c.cluePosition = boardPosChar;
+    c.clueRow      = clueRowChar;
+    return c;
+}
+
+
+// BusinessRelations Implementation
+BusinessRelations::BusinessRelations(const std::string& name, const std::string& role,
+                                     const std::string& nat, char letter, int pos)
+    : Suspect(name, role, nat, letter, pos)
+{
+}
+
+BusinessRelations::~BusinessRelations()
+{
+}
+
+void BusinessRelations::display(std::ostream& out) const
+{
+    out << StringUtils::formatPersonName(getName())
+        << " [" << getRole() << "] - Nationality: " << getNationality();
+}
+
+
+// CloseRelations Implementation
+CloseRelations::CloseRelations(const std::string& name, const std::string& role,
+                               const std::string& nat, char letter, int pos)
+    : Suspect(name, role, nat, letter, pos)
+{
+}
+
+CloseRelations::~CloseRelations()
+{
+}
+
+void CloseRelations::display(std::ostream& out) const
+{
+    out << StringUtils::formatPersonName(getName())
+        << " [" << getRole() << "] - Nationality: " << getNationality();
+}
+
+
+// HouseHelp Implementation
+HouseHelp::HouseHelp(const std::string& name, const std::string& role, const std::string& nat,
+                     char letter, int pos)
+    : Suspect(name, role, nat, letter, pos)
+{
+}
+
+HouseHelp::~HouseHelp()
+{
+}
+
+int HouseHelp::getMinimumCredibility() const
+{
+    return 0;
+}
+
+void HouseHelp::display(std::ostream& out) const
+{
+    out << StringUtils::formatPersonName(getName())
+        << " [" << getRole() << "] - Nationality: " << getNationality();
+}
+
+
+// Cook Implementation
+Cook::Cook(const std::string& name, const std::string& nat, char letter, int pos)
+    : HouseHelp(name, "Cook", nat, letter, pos)
+{
+}
+
+Cook::~Cook()
+{
+}
+
+void Cook::display(std::ostream& out) const
+{
+    out << StringUtils::formatPersonName(getName())
+        << " [Cook] - Nationality: " << getNationality();
+}
+
+
+// Guard Implementation
+Guard::Guard(const std::string& name, const std::string& nat, char letter, int pos)
+    : HouseHelp(name, "Guard", nat, letter, pos)
+{
+}
+
+Guard::~Guard()
+{
+}
+
+void Guard::display(std::ostream& out) const
+{
+    out << StringUtils::formatPersonName(getName())
+        << " [Guard] - Nationality: " << getNationality();
+}
+
+
+// Servant Implementation
+Servant::Servant(const std::string& name, const std::string& nat, char letter, int pos)
+    : HouseHelp(name, "Servant", nat, letter, pos)
+{
+}
+
+Servant::~Servant()
+{
+}
+
+void Servant::display(std::ostream& out) const
+{
+    out << StringUtils::formatPersonName(getName())
+        << " [Servant] - Nationality: " << getNationality();
+}
+
+
+// Partner Implementation
+Partner::Partner(const std::string& name, const std::string& nat, int number, char letter, int pos)
+    : Suspect(name, (number == 1 ? "Partner 1" : "Partner 2"), nat, letter, pos),
+      BusinessRelations(name, (number == 1 ? "Partner 1" : "Partner 2"), nat, letter, pos),
+      partnerNumber(number)
+{
+}
+
+Partner::~Partner()
+{
+}
+
+int Partner::getPartnerNumber() const
+{
+    return partnerNumber;
+}
+
+int Partner::getMinimumCredibility() const
+{
+    return 50;
+}
+
+void Partner::display(std::ostream& out) const
+{
+    out << StringUtils::formatPersonName(getName())
+        << " [" << getRole() << "] - Nationality: " << getNationality();
+}
+
+
+// PA Implementation (resolves diamond inheritance from BusinessRelations and CloseRelations)
+PA::PA(const std::string& name, const std::string& nat, char letter, int pos)
+    : Suspect(name, "PA", nat, letter, pos),
+      BusinessRelations(name, "PA", nat, letter, pos),
+      CloseRelations(name, "PA", nat, letter, pos)
+{
+}
+
+PA::~PA()
+{
+}
+
+int PA::getMinimumCredibility() const
+{
+    return 35;
+}
+
+void PA::display(std::ostream& out) const
+{
+    out << StringUtils::formatPersonName(getName())
+        << " [PA] - Nationality: " << getNationality();
+}
+
+
+// Child Implementation
+Child::Child(const std::string& name, const std::string& nat, char letter, int pos, int a)
+    : Suspect(name, "Child", nat, letter, pos),
+      CloseRelations(name, "Child", nat, letter, pos),
+      age(a)
+{
+    if (a < 15 || a > 19)
+    {
+        throw InvalidInputException("Child age must be between 15 and 19; provided: " +
+                                    StringUtils::intToString(a));
+    }
+}
+
+Child::~Child()
+{
+}
+
+int Child::getAge() const
+{
+    return age;
+}
+
+int Child::getMinimumCredibility() const
+{
+    return 75;
+}
+
+void Child::display(std::ostream& out) const
+{
+    out << StringUtils::formatPersonName(getName())
+        << " [Child, Age: " << age << "] - Nationality: " << getNationality();
+}
+
+
+// CharacterFactory Implementation
+Character* CharacterFactory::create(const CharacterRecord& record, int culpritColumn)
+{
+    if (culpritColumn < 0 || culpritColumn >= DataLoader::ROLE_COUNT)
+    {
+        throw InvalidInputException("Invalid culprit column index: " +
+                                    StringUtils::intToString(culpritColumn));
+    }
+
+    char letter = record.letters[culpritColumn];
+    int pos     = record.word2Pos;
+    std::string role = StringUtils::trim(record.role);
+
+    if (role == "Victim")
+    {
+        return new Victim(record.name, record.nationality, letter, pos);
+    }
+    else if (role == "Cook")
+    {
+        return new Cook(record.name, record.nationality, letter, pos);
+    }
+    else if (role == "Guard")
+    {
+        return new Guard(record.name, record.nationality, letter, pos);
+    }
+    else if (role == "Servant")
+    {
+        return new Servant(record.name, record.nationality, letter, pos);
+    }
+    else if (role == "Partner 1" || role == "Partner_1")
+    {
+        return new Partner(record.name, record.nationality, 1, letter, pos);
+    }
+    else if (role == "Partner 2" || role == "Partner_2")
+    {
+        return new Partner(record.name, record.nationality, 2, letter, pos);
+    }
+    else if (role == "PA")
+    {
+        return new PA(record.name, record.nationality, letter, pos);
+    }
+    else if (role == "Child")
+    {
+        return new Child(record.name, record.nationality, letter, pos);
+    }
+    else
+    {
+        throw InvalidInputException("Unknown character role: " + record.role);
     }
 }

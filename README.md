@@ -60,8 +60,8 @@ This script:
 ```powershell
 # From inside the TheLockerHeist folder:
 cd TheLockerHeist
-..\x64\Debug\heist.exe             # loads and verifies all data files (Commit 2)
-..\x64\Debug\heist.exe --selftest  # executes ST-01 and ST-02 self-tests
+..\x64\Debug\heist.exe             # loads and verifies all data files (Commit 2 & 3)
+..\x64\Debug\heist.exe --selftest  # executes ST-01, ST-02, and ST-03 self-tests
 ```
 
 ---
@@ -135,10 +135,11 @@ generated code. The team is fully responsible for the final submission.
 |-------|-------|--------|
 | **ST-01** | Module 1 Foundation Types (Tile, Clue, Location, WordRow, GameState, MenuChoice) | 27 / 27 PASS |
 | **ST-02** | Module 6 & 7 (GameException family, StringUtils, DataLoader, Corruption Detection) | 40 / 40 PASS |
+| **ST-03** | Module 3 & 9 (Character hierarchy, Diamond inheritance, Factory, Deep Copy, Virtual Destructors) | 20 / 20 PASS |
 
 ---
 
 ## Known Limitations
 
 - Visual Studio MSVC is not yet installed on this workstation environment; automated tests run through `g++` (C++17) during local testing, producing identical standard-compliant behavior.
-- In-game menus and loop are scheduled for Commit 8. Currently, executing `heist.exe` without flags verifies the authentic dataset and prints status.
+- In-game menus and game loop are scheduled for Commit 8. Currently, executing `heist.exe` without flags verifies the authentic dataset and prints status.

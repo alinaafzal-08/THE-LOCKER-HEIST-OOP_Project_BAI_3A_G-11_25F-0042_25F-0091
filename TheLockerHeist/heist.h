@@ -2,18 +2,22 @@
 
 // ============================================================
 // heist.h  --  THE LOCKER HEIST
-// All declarations: enums, structs, exceptions, utilities, and
-// class templates live here and nowhere else. Only heist.cpp and
-// main.cpp include this file. Having a single header keeps the
-// entire architecture visible in one place and prevents circular
-// dependency issues across the project.
+// All declarations: enums, structs, exceptions, utilities,
+// character hierarchy, and class templates live here and nowhere else.
+// Only heist.cpp and main.cpp include this file. Having a single header
+// keeps the entire architecture visible in one place and prevents
+// circular dependency issues across the project.
 // ============================================================
 
 // The header includes only what declarations themselves need.
 // Implementation-only headers (<fstream>, <cstdlib>, <ctime>)
 // reside in .cpp files that actually use them to minimize rebuild times.
-#include <iostream>   // std::ostream used in operator<< declarations
+#include <iostream>   // std::ostream used in operator<< declarations and display()
 #include <string>     // std::string for textual data and messages
+
+
+// Forward declaration for GameEngine (friend class of Character)
+class GameEngine;
 
 
 // ============================================================
@@ -344,4 +348,237 @@ public:
 
     // Maps role name ("Cook", "Guard", "Partner 1", "Partner_1", etc.) to 0-based column index (0-6)
     static int roleToColumn(const std::string& role);
+};
+
+
+// ============================================================
+// SECTION 7 -- CHARACTER HIERARCHY (Commit 3, Module 3 & 9)
+// Abstract Character base class, polymorphic hierarchy, multiple and
+// virtual inheritance for the PA diamond problem, and CharacterFactory.
+// ============================================================
+
+// Abstract base class representing all entities in the game.
+class Character
+{
+private:
+    std::string characterName;
+    std::string characterRole;
+    std::string nationality;
+    bool        isCulprit;
+
+    static int liveCount; // Tracks currently active objects for memory leak tests
+
+    friend class GameEngine;
+
+public:
+    Character(const std::string& name, const std::string& role, const std::string& nat);
+    Character(const Character& other);
+    Character& operator=(const Character& other);
+    virtual ~Character();
+
+    std::string getName() const;
+    std::string getRole() const;
+    std::string getNationality() const;
+    bool        getIsCulprit() const;
+
+    // Pure virtual method rendering Character abstract
+    virtual void display(std::ostream& out) const = 0;
+
+    // Virtual hooks with default behaviors
+    virtual int  getMinimumCredibility() const;
+    virtual bool hasClue() const;
+    virtual Clue getClue() const;
+
+    static int getLiveCount();
+};
+
+// Victim represents Mr. Leonardo, who provides the first Word 2 clue letter.
+class Victim : public Character
+{
+private:
+    char    letterClueChar;
+    int     boardPosChar;
+    WordRow clueRowChar;
+
+public:
+    Victim(const std::string& name, const std::string& nat, char letter, int pos);
+    virtual ~Victim() override;
+
+    char    getLetterClue() const;
+    int     getBoardPos() const;
+    WordRow getClueRow() const;
+
+    void display(std::ostream& out) const override;
+    bool hasClue() const override;
+    Clue getClue() const override;
+    int  getMinimumCredibility() const override;
+};
+
+// Detective represents the playable investigator, managing credibility, turns,
+// and a heap-allocated array of solved secret words with deep copy semantics.
+class Detective : public Character
+{
+private:
+    int          credibility;
+    int          turns;
+    std::string* solvedWords; // Dynamic array of 2 strings [Word1, Word2]
+
+public:
+    static const std::string DEFAULT_NATIONALITY;
+
+    explicit Detective(const std::string& name, int startingCredibility = 100);
+    Detective(const Detective& other);
+    Detective& operator=(const Detective& other);
+    virtual ~Detective() override;
+
+    int         getCredibility() const;
+    void        reduceCredibility(int amount);
+    void        addTurn();
+    int         getTurnsUsed() const;
+    void        setSolvedWord(WordRow row, const std::string& word);
+    std::string getSolvedWord(WordRow row) const;
+    bool        isRowSolved(WordRow row) const;
+    bool        areBothSolved() const;
+
+    void display(std::ostream& out) const override;
+};
+
+// Abstract intermediate class representing anyone under suspicion.
+class Suspect : public Character
+{
+private:
+    char    letterClueChar;
+    int     boardPosChar;
+    WordRow clueRowChar;
+
+public:
+    Suspect(const std::string& name, const std::string& role, const std::string& nat,
+            char letter = ' ', int pos = 0);
+    virtual ~Suspect() override;
+
+    char    getLetterClue() const;
+    void    setLetterClue(char c);
+    int     getBoardPos() const;
+    void    setBoardPos(int p);
+    WordRow getClueRow() const;
+    void    setClueRow(WordRow r);
+
+    bool hasClue() const override;
+    Clue getClue() const override;
+
+    void display(std::ostream& out) const override = 0;
+};
+
+// Virtual public inheritance branch of Suspect for business associates
+class BusinessRelations : virtual public Suspect
+{
+public:
+    BusinessRelations(const std::string& name, const std::string& role, const std::string& nat,
+                      char letter = ' ', int pos = 0);
+    virtual ~BusinessRelations() override;
+
+    void display(std::ostream& out) const override;
+};
+
+// Virtual public inheritance branch of Suspect for family/personal associates
+class CloseRelations : virtual public Suspect
+{
+public:
+    CloseRelations(const std::string& name, const std::string& role, const std::string& nat,
+                   char letter = ' ', int pos = 0);
+    virtual ~CloseRelations() override;
+
+    void display(std::ostream& out) const override;
+};
+
+// Base class for household domestic staff
+class HouseHelp : public Suspect
+{
+public:
+    HouseHelp(const std::string& name, const std::string& role, const std::string& nat,
+              char letter = ' ', int pos = 0);
+    virtual ~HouseHelp() override;
+
+    int  getMinimumCredibility() const override;
+    void display(std::ostream& out) const override;
+};
+
+// Concrete Cook character (Mr. Enzo)
+class Cook : public HouseHelp
+{
+public:
+    Cook(const std::string& name, const std::string& nat, char letter, int pos);
+    virtual ~Cook() override;
+
+    void display(std::ostream& out) const override;
+};
+
+// Concrete Guard character (Mr. Lukas)
+class Guard : public HouseHelp
+{
+public:
+    Guard(const std::string& name, const std::string& nat, char letter, int pos);
+    virtual ~Guard() override;
+
+    void display(std::ostream& out) const override;
+};
+
+// Concrete Servant character (Mr. Toby)
+class Servant : public HouseHelp
+{
+public:
+    Servant(const std::string& name, const std::string& nat, char letter, int pos);
+    virtual ~Servant() override;
+
+    void display(std::ostream& out) const override;
+};
+
+// Concrete Partner character (Ms. Ruslana, Mr. Dmitry)
+class Partner : public BusinessRelations
+{
+private:
+    int partnerNumber; // 1 or 2
+
+public:
+    Partner(const std::string& name, const std::string& nat, int number, char letter, int pos);
+    virtual ~Partner() override;
+
+    int  getPartnerNumber() const;
+    int  getMinimumCredibility() const override;
+    void display(std::ostream& out) const override;
+};
+
+// Concrete PA character (Mr. Jad) resolving diamond inheritance
+class PA : public BusinessRelations, public CloseRelations
+{
+public:
+    PA(const std::string& name, const std::string& nat, char letter, int pos);
+    virtual ~PA() override;
+
+    int  getMinimumCredibility() const override;
+    void display(std::ostream& out) const override;
+};
+
+// Concrete Child character (Ms. Celine) with age validation
+class Child : public CloseRelations
+{
+private:
+    int age;
+
+public:
+    static const int DEFAULT_AGE = 17;
+
+    Child(const std::string& name, const std::string& nat, char letter, int pos, int age = DEFAULT_AGE);
+    virtual ~Child() override;
+
+    int  getAge() const;
+    int  getMinimumCredibility() const override;
+    void display(std::ostream& out) const override;
+};
+
+// Factory producing concrete Character derived instances from data records
+class CharacterFactory
+{
+public:
+    static Character* create(const CharacterRecord& record, int culpritColumn);
 };

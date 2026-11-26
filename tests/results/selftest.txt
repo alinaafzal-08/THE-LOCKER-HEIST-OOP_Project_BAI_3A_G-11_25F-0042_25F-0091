@@ -89,3 +89,41 @@
   Result: 40 passed, 0 failed.
 ========================================
 
+
+========================================
+  ST-03  Character Hierarchy Self-Test
+========================================
+  [PASS] ST-03: Loaded 8 character records for factory construction
+  [PASS] ST-03: CharacterFactory constructed 8 instances; liveCount incremented by 8
+
+--- Polymorphic display() outputs ---
+  Mr. Leonardo [Victim] - Nationality: French
+  Mr. Enzo [Cook] - Nationality: Italian
+  Mr. Lukas [Guard] - Nationality: German
+  Mr. Toby [Servant] - Nationality: British
+  Ms. Celine [Child, Age: 17] - Nationality: French
+  Ms. Ruslana [Partner 1] - Nationality: Ukrainian
+  Mr. Dmitry [Partner 2] - Nationality: Russian
+  Mr. Jad [PA] - Nationality: Egyptian
+  [PASS] ST-03: Polymorphic display() executed without exception
+  [PASS] ST-03: getMinimumCredibility() values match expected sequence (80, 0, 0, 0, 75, 50, 50, 35)
+  [PASS] ST-03: Victim getClue() returns letter 'P' at position 1 (Word2)
+  [PASS] ST-03: Detective getClue() throws InvalidInputException
+  [PASS] ST-03: Constructing one PA increases liveCount by exactly 1 (virtual inheritance)
+  [PASS] ST-03: Diamond ambiguity resolved: BusinessRelations* and CloseRelations* resolve to identical Suspect*
+  [PASS] ST-03: Deleting PA via Character* virtual destructor restores liveCount
+  [PASS] ST-03: Detective deep copy: mutating copy leaves original solvedWords intact
+  [PASS] ST-03: Detective deep copy: copies manage independent heap memory
+  [PASS] ST-03: Detective turn counters copied properly
+  [PASS] ST-03: Detective self-assignment safe
+  [PASS] ST-03: Detective reduceCredibility(30) reduces 100 to 70
+  [PASS] ST-03: Detective reduceCredibility(100) clamps at 0
+  [PASS] ST-03: Child age 14 throws InvalidInputException
+  [PASS] ST-03: Child age 20 throws InvalidInputException
+  [PASS] ST-03: Child age 17 constructs successfully
+  [PASS] ST-03: CharacterFactory throws InvalidInputException on unknown role
+  [PASS] ST-03: Deleting all 8 characters via Character* base restores original liveCount
+----------------------------------------
+  Result: 20 passed, 0 failed.
+========================================
+
