@@ -238,3 +238,40 @@ Rack 2 (People): Rack: [A@1] [B@2] [C@3] [D@4] [E@5] [F@6] [G@7] [H@8]
   Result: 34 passed, 0 failed.
 ========================================
 
+
+========================================
+  ST-06  DynamicArray<T> Template Self-Test
+========================================
+  [PASS] ST-06: DynamicArray initialCapacity 0 throws InvalidInputException
+  [PASS] ST-06: DynamicArray initialCapacity -5 throws InvalidInputException
+  [PASS] ST-06: DynamicArray<int> is initially empty
+  [PASS] ST-06: DynamicArray<int> initial size is 0
+  [PASS] ST-06: DynamicArray<int> initial capacity is 4
+  [PASS] ST-06: DynamicArray<int> size is 100 after 100 pushes
+  [PASS] ST-06: DynamicArray<int> auto-growth expanded capacity >= 100
+  [PASS] ST-06: DynamicArray<int> isEmpty() is false
+  [PASS] ST-06: DynamicArray<int> all 100 pushed elements read back correctly
+  [PASS] ST-06: DynamicArray<int> operator[] with index -1 throws InvalidPositionException
+  [PASS] ST-06: DynamicArray<int> operator[] with index size (100) throws InvalidPositionException
+  [PASS] ST-06: DynamicArray<int> const operator[] reads valid elements
+  [PASS] ST-06: DynamicArray<int> const operator[] out of bounds throws
+  [PASS] ST-06: DynamicArray<int> removeAt(0) shifts elements left
+  [PASS] ST-06: DynamicArray<int> clear() resets size to 0 and isEmpty is true
+  [PASS] ST-06: DynamicArray<int> resize(5) creates 5 elements
+  [PASS] ST-06: DynamicArray<int> resize default-initializes newly created elements to 0
+  [PASS] ST-06: DynamicArray<int> resize(-2) throws InvalidInputException
+  [PASS] ST-06: DynamicArray<char> contains 26 uppercase letters
+  [PASS] ST-06: DynamicArray<char> first is 'A' and last is 'Z'
+  [PASS] ST-06: DynamicArray<char> removeAt(1) removed 'B' and shifted 'C' left
+  [PASS] ST-06: DynamicArray<string> copy ctor and assignment replicate size
+  [PASS] ST-06: Mutating string copies leaves original unchanged (deep copy)
+  [PASS] ST-06: Copies maintain independent heap data buffers
+  [PASS] ST-06: DynamicArray<string> self-assignment is safe and preserves data
+  [PASS] ST-06: DynamicArray<Tile> copy mutation does not affect original Tile array
+  [PASS] ST-06: DynamicArray<Location> holds and retrieves Location struct
+  [PASS] ST-06: DynamicArray<Location> non-const operator[] allows modifying elements in-place
+  [PASS] ST-06: DynamicArray<Location> clear() empties container
+----------------------------------------
+  Result: 29 passed, 0 failed.
+========================================
+

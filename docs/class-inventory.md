@@ -1,6 +1,6 @@
 # Class Inventory — The Locker Heist
 **Binding architecture contract.  Names, visibilities, and relationships here govern every commit.**
-Last updated: Commit 5 (Alina Afzal, 25F-0042).
+Last updated: Commit 6 (Samreen Kousar, 25F-0091).
 
 ---
 
@@ -97,18 +97,21 @@ Sole polymorphic construction hub based on role strings; throws `InvalidInputExc
 
 ---
 
-## Board and Container Classes — Implemented in Commit 4 & 5 (Module 4 & 5)
+## Generic Container Template — Implemented in Commit 6 (Module 8)
 
 | Class | Kind | Fields & Methods | Notes |
 |-------|------|------------------|-------|
-| `TileRack` | Dynamic Container | `Tile* tiles; int* positions; int capacity; int count;` <br> `TileRack(int cap); ~TileRack(); TileRack(const TileRack&); TileRack& operator=(const TileRack&);` <br> `addTile(); removeTile(); removeLast(); markPlaced(); isPlaced(); hasPosition(); getCapacity(); getCount(); isEmpty(); isFull(); clear(); display(); friend operator<<;` | Parallel dynamic heap arrays allocated with `new[]` and freed with `delete[]`. Independent memory deep copy. Will be migrated to `DynamicArray<T>` in Commit 6. Friend of `GameEngine`. Implemented in C4. |
-| `Scrabble` | Dynamic Jagged Board | `Tile** grid; std::string targetWord1; std::string targetWord2;` <br> `Scrabble(); Scrabble(string w1, string w2); ~Scrabble(); Scrabble(const Scrabble&); Scrabble& operator=(const Scrabble&);` <br> `loadTargetWords(); placeLetter(); revealLetter(); verifyWord(); isRowComplete(); isComplete(); getRowLength(); getRowString(); display(); friend operator<<;` | Jagged 2D dynamic heap array (`grid[0]` size 7, `grid[1]` size 8). 1-based indexing for clue placement. Validates target letters, handles complete/incomplete rows, deep-copies grid state. Implemented in C4. |
-| `Cottage` | Dynamic Container | `Location** locations; int locationCount;` <br> `Cottage(); Cottage(const LocationRecord records[], int count, int culpritColumn); ~Cottage(); Cottage(const Cottage&); Cottage& operator=(const Cottage&);` <br> `getLocationCount(); isLocationSearched(num); searchLocation(num); getLocationClue(num); getLocationName(num); getSearchedCount(); allSearched(); displayLocations(); friend operator<<;` | Dynamic array of heap-allocated `Location*` instances using raw dynamic memory (`new Location*[count]`). Deep copy constructor and assignment operator. 1-based room indexing; validates bounds throwing `InvalidPositionException`. Aggregation relationship with `Location[]` (Decision R16). Implemented in C5. |
+| `DynamicArray<T>` | Class Template | `T* data; int capacity; int size;` <br> `DynamicArray(int cap = 4); DynamicArray(const DynamicArray&); DynamicArray& operator=(const DynamicArray&); ~DynamicArray();` <br> `push(item); operator[](idx); removeAt(idx); clear(); resize(newSize); getSize(); getCapacity(); isEmpty();` | Type-safe generic heap buffer template. Eliminates repeated manual `new[]`/`delete[]` across domain containers. Reallocates with power-of-two growth; bounds-checked indexing throws `InvalidPositionException`. |
 
-### Scheduled for Commit 6
-| Class | Kind | Responsibility |
-|-------|------|---------------|
-| `DynamicArray<T>` | Template | Custom heap array template replacing raw arrays in `TileRack` (no `<vector>`) |
+---
+
+## Board and Container Classes — Refactored in Commit 6 (Module 4, 5, & 8)
+
+| Class | Kind | Fields & Methods | Notes |
+|-------|------|------------------|-------|
+| `TileRack` | Dynamic Container | `DynamicArray<Tile> tiles; DynamicArray<int> positions; int capacity;` <br> `TileRack(int cap); ~TileRack(); TileRack(const TileRack&); TileRack& operator=(const TileRack&);` <br> `addTile(); removeTile(); removeLast(); markPlaced(); isPlaced(); hasPosition(); getCapacity(); getCount(); isEmpty(); isFull(); clear(); display(); friend operator<<;` | Refactored in C6 to use `DynamicArray<Tile>` and `DynamicArray<int>`. Original C4 raw DMA implementation preserved in single-line comments for viva reference. Friend of `GameEngine`. |
+| `Scrabble` | Dynamic Jagged Board | `DynamicArray<Tile> rows[2]; int rowLength[2]; std::string targetWord[2]; bool targetsLoaded;` <br> `Scrabble(); Scrabble(string w1, string w2); ~Scrabble(); Scrabble(const Scrabble&); Scrabble& operator=(const Scrabble&);` <br> `loadTargetWords(); placeLetter(); revealLetter(); verifyWord(); isRowComplete(); isComplete(); getRowLength(); getRowString(); display(); friend operator<<;` | Refactored in C6 to two `DynamicArray<Tile>` rows (`rows[0]` resized to 7, `rows[1]` resized to 8). Original C4 raw dynamic 2D array preserved in single-line comments. |
+| `Cottage` | Dynamic Container | `DynamicArray<Location> locations;` <br> `Cottage(); Cottage(const LocationRecord records[], int count, int culpritColumn); ~Cottage(); Cottage(const Cottage&); Cottage& operator=(const Cottage&);` <br> `getLocationCount(); isLocationSearched(num); searchLocation(num); getLocationClue(num); getLocationName(num); getSearchedCount(); allSearched(); displayLocations(); friend operator<<;` | Refactored in C6 to `DynamicArray<Location>` (stores `Location` structs by value). Original C5 raw dynamic pointer array `Location**` preserved in single-line comments. Aggregation relationship with `Location[]` (Decision R16). |
 
 ### Scheduled for Commit 8
 | Class | Kind | Responsibility |

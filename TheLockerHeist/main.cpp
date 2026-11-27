@@ -1205,6 +1205,182 @@ static int runCottageAndDetectiveSelfTest()
 }
 
 // ------------------------------------------------------------
+// runDynamicArraySelfTest()  --  ST-06 (Commit 6, Module 8)
+// ------------------------------------------------------------
+static int runDynamicArraySelfTest()
+{
+    int passed = 0;
+    int failed = 0;
+
+    std::cout << "\n========================================\n";
+    std::cout << "  ST-06  DynamicArray<T> Template Self-Test\n";
+    std::cout << "========================================\n";
+
+    // 1. Initial capacity validation and error handling
+    {
+        bool caughtZero = false;
+        try { DynamicArray<int> badArr(0); }
+        catch (const InvalidInputException&) { caughtZero = true; }
+        check(caughtZero, "ST-06: DynamicArray initialCapacity 0 throws InvalidInputException", passed, failed);
+
+        bool caughtNegative = false;
+        try { DynamicArray<int> badArr(-5); }
+        catch (const InvalidInputException&) { caughtNegative = true; }
+        check(caughtNegative, "ST-06: DynamicArray initialCapacity -5 throws InvalidInputException", passed, failed);
+    }
+
+    // 2. DynamicArray<int>: push 100 items, check auto-growth, read back
+    {
+        DynamicArray<int> intArr(4);
+        check(intArr.isEmpty(), "ST-06: DynamicArray<int> is initially empty", passed, failed);
+        check(intArr.getSize() == 0, "ST-06: DynamicArray<int> initial size is 0", passed, failed);
+        check(intArr.getCapacity() == 4, "ST-06: DynamicArray<int> initial capacity is 4", passed, failed);
+
+        // Push 100 items (0..99)
+        for (int i = 0; i < 100; ++i)
+        {
+            intArr.push(i * 10);
+        }
+        check(intArr.getSize() == 100, "ST-06: DynamicArray<int> size is 100 after 100 pushes", passed, failed);
+        check(intArr.getCapacity() >= 100, "ST-06: DynamicArray<int> auto-growth expanded capacity >= 100", passed, failed);
+        check(!intArr.isEmpty(), "ST-06: DynamicArray<int> isEmpty() is false", passed, failed);
+
+        // Read all 100 elements back
+        bool elementsMatch = true;
+        for (int i = 0; i < 100; ++i)
+        {
+            if (intArr[i] != i * 10)
+            {
+                elementsMatch = false;
+            }
+        }
+        check(elementsMatch, "ST-06: DynamicArray<int> all 100 pushed elements read back correctly", passed, failed);
+
+        // Bounds checking on operator[]
+        bool caughtNeg = false;
+        try { int x = intArr[-1]; (void)x; }
+        catch (const InvalidPositionException&) { caughtNeg = true; }
+        check(caughtNeg, "ST-06: DynamicArray<int> operator[] with index -1 throws InvalidPositionException", passed, failed);
+
+        bool caughtSize = false;
+        try { int x = intArr[100]; (void)x; }
+        catch (const InvalidPositionException&) { caughtSize = true; }
+        check(caughtSize, "ST-06: DynamicArray<int> operator[] with index size (100) throws InvalidPositionException", passed, failed);
+
+        // Const operator[] check
+        const DynamicArray<int>& constRef = intArr;
+        check(constRef[0] == 0 && constRef[99] == 990, "ST-06: DynamicArray<int> const operator[] reads valid elements", passed, failed);
+        bool constCaught = false;
+        try { int x = constRef[105]; (void)x; }
+        catch (const InvalidPositionException&) { constCaught = true; }
+        check(constCaught, "ST-06: DynamicArray<int> const operator[] out of bounds throws", passed, failed);
+
+        // removeAt
+        intArr.removeAt(0); // removes 0; new index 0 should be 10
+        check(intArr.getSize() == 99 && intArr[0] == 10, "ST-06: DynamicArray<int> removeAt(0) shifts elements left", passed, failed);
+
+        // clear
+        intArr.clear();
+        check(intArr.isEmpty() && intArr.getSize() == 0, "ST-06: DynamicArray<int> clear() resets size to 0 and isEmpty is true", passed, failed);
+
+        // resize
+        intArr.resize(5);
+        check(intArr.getSize() == 5, "ST-06: DynamicArray<int> resize(5) creates 5 elements", passed, failed);
+        check(intArr[0] == 0 && intArr[4] == 0, "ST-06: DynamicArray<int> resize default-initializes newly created elements to 0", passed, failed);
+
+        bool caughtResizeNeg = false;
+        try { intArr.resize(-2); }
+        catch (const InvalidInputException&) { caughtResizeNeg = true; }
+        check(caughtResizeNeg, "ST-06: DynamicArray<int> resize(-2) throws InvalidInputException", passed, failed);
+    }
+
+    // 3. DynamicArray<char>: push, removeAt, check
+    {
+        DynamicArray<char> charArr(2);
+        for (char c = 'A'; c <= 'Z'; ++c)
+        {
+            charArr.push(c);
+        }
+        check(charArr.getSize() == 26, "ST-06: DynamicArray<char> contains 26 uppercase letters", passed, failed);
+        check(charArr[0] == 'A' && charArr[25] == 'Z', "ST-06: DynamicArray<char> first is 'A' and last is 'Z'", passed, failed);
+
+        charArr.removeAt(1); // removes 'B'; index 1 should now be 'C'
+        check(charArr.getSize() == 25 && charArr[1] == 'C', "ST-06: DynamicArray<char> removeAt(1) removed 'B' and shifted 'C' left", passed, failed);
+    }
+
+    // 4. DynamicArray<std::string>: deep copy and self-assignment
+    {
+        DynamicArray<std::string> strArr(2);
+        strArr.push("London");
+        strArr.push("Paris");
+        strArr.push("Cairo");
+
+        DynamicArray<std::string> copyArr = strArr; // Copy constructor
+        DynamicArray<std::string> assignArr(1);
+        assignArr = strArr;                         // Copy assignment
+
+        check(copyArr.getSize() == 3 && assignArr.getSize() == 3,
+              "ST-06: DynamicArray<string> copy ctor and assignment replicate size", passed, failed);
+
+        copyArr[0]   = "Berlin";
+        assignArr[0] = "Tokyo";
+
+        check(strArr[0] == "London", "ST-06: Mutating string copies leaves original unchanged (deep copy)", passed, failed);
+        check(copyArr[0] == "Berlin" && assignArr[0] == "Tokyo",
+              "ST-06: Copies maintain independent heap data buffers", passed, failed);
+
+        // Self-assignment
+        strArr = strArr;
+        check(strArr.getSize() == 3 && strArr[0] == "London" && strArr[2] == "Cairo",
+              "ST-06: DynamicArray<string> self-assignment is safe and preserves data", passed, failed);
+    }
+
+    // 5. DynamicArray<Tile>: struct elements deep copy and mutation independence
+    {
+        DynamicArray<Tile> tileArr(2);
+        Tile t1{'P', true};
+        Tile t2{'A', false};
+        tileArr.push(t1);
+        tileArr.push(t2);
+
+        DynamicArray<Tile> tileCopy = tileArr;
+        tileCopy[0].tileLetter = 'X';
+        tileCopy[0].filled = false;
+
+        check(tileArr[0].tileLetter == 'P' && tileArr[0].filled == true,
+              "ST-06: DynamicArray<Tile> copy mutation does not affect original Tile array", passed, failed);
+    }
+
+    // 6. DynamicArray<Location>: domain entity container operations
+    {
+        DynamicArray<Location> locArr(2);
+        Location loc1;
+        loc1.locName = "Study_Room";
+        loc1.boardPosLoc = 3;
+        loc1.letterClueLoc = 'A';
+        loc1.locSearchFlag = false;
+
+        locArr.push(loc1);
+        check(locArr.getSize() == 1 && locArr[0].locName == "Study_Room",
+              "ST-06: DynamicArray<Location> holds and retrieves Location struct", passed, failed);
+
+        locArr[0].locSearchFlag = true;
+        check(locArr[0].locSearchFlag == true,
+              "ST-06: DynamicArray<Location> non-const operator[] allows modifying elements in-place", passed, failed);
+
+        locArr.clear();
+        check(locArr.isEmpty() && locArr.getSize() == 0,
+              "ST-06: DynamicArray<Location> clear() empties container", passed, failed);
+    }
+
+    std::cout << "----------------------------------------\n";
+    std::cout << "  Result: " << passed << " passed, " << failed << " failed.\n";
+    std::cout << "========================================\n\n";
+
+    return failed;
+}
+
+// ------------------------------------------------------------
 // main()
 // ------------------------------------------------------------
 int main(int argc, char* argv[])
@@ -1218,6 +1394,7 @@ int main(int argc, char* argv[])
         totalFailures += runCharacterHierarchySelfTest();
         totalFailures += runBoardClassesSelfTest();
         totalFailures += runCottageAndDetectiveSelfTest();
+        totalFailures += runDynamicArraySelfTest();
         return (totalFailures > 0) ? 1 : 0;
     }
 

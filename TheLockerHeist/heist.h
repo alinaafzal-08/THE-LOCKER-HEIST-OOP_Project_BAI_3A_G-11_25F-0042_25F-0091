@@ -358,22 +358,190 @@ public:
 
 
 // ============================================================
-// SECTION 7 -- BOARD AND CONTAINER CLASSES (Commit 4 & 5, Module 4 & 5)
-// Raw dynamic memory implementations: TileRack, Scrabble, and Cottage.
-// Note: In Commit 6, TileRack will be adapted to use DynamicArray<T>.
-// All comments in raw memory blocks use single-line style (//) to prevent
-// nested block comment syntax errors during future refactoring.
+// SECTION 7 -- GENERIC CONTAINER TEMPLATE (Commit 6, Module 8)
+// DynamicArray<T> provides a type-safe, automatically resizing
+// heap buffer implementing generic programming principles.
+// It eliminates boilerplate manual dynamic memory management (new[] / delete[])
+// across board, rack, and location containers, enforcing RAII and
+// deep copy semantics uniformly across the engine.
+// ============================================================
+
+template <typename T>
+class DynamicArray
+{
+private:
+    T*  data;      // Heap-allocated array storing elements of type T
+    int capacity;  // Current total allocated storage capacity
+    int size;      // Current number of active elements in the array
+
+public:
+    // Constructs dynamic array with specified initial capacity (minimum 1)
+    explicit DynamicArray(int initialCapacity = 4)
+        : data(nullptr), capacity(initialCapacity), size(0)
+    {
+        if (initialCapacity < 1)
+        {
+            throw InvalidInputException("Initial capacity must be at least 1; requested: " +
+                                        StringUtils::intToString(initialCapacity));
+        }
+        data = new T[capacity];
+    }
+
+    // Deep copy constructor: creates an independent duplicate of source buffer
+    DynamicArray(const DynamicArray& other)
+        : data(nullptr), capacity(other.capacity), size(other.size)
+    {
+        data = new T[capacity];
+        for (int i = 0; i < size; ++i)
+        {
+            data[i] = other.data[i];
+        }
+    }
+
+    // Deep copy assignment operator: self-assignment safe
+    DynamicArray& operator=(const DynamicArray& other)
+    {
+        if (this != &other)
+        {
+            T* newData = new T[other.capacity];
+            for (int i = 0; i < other.size; ++i)
+            {
+                newData[i] = other.data[i];
+            }
+            delete[] data;
+            data     = newData;
+            capacity = other.capacity;
+            size     = other.size;
+        }
+        return *this;
+    }
+
+    // Destructor releasing allocated heap storage
+    ~DynamicArray()
+    {
+        delete[] data;
+        data = nullptr;
+        capacity = 0;
+        size = 0;
+    }
+
+    // Appends an element to the end; doubles buffer capacity when full
+    void push(const T& item)
+    {
+        if (size >= capacity)
+        {
+            int newCapacity = capacity * 2;
+            T* newData = new T[newCapacity];
+            for (int i = 0; i < size; ++i)
+            {
+                newData[i] = data[i];
+            }
+            delete[] data;
+            data     = newData;
+            capacity = newCapacity;
+        }
+        data[size++] = item;
+    }
+
+    // Subscript operator (non-const): validates 0-based index and throws InvalidPositionException
+    T& operator[](int index)
+    {
+        if (index < 0 || index >= size)
+        {
+            // Converts 0-based index to 1-based position for user-facing exception
+            throw InvalidPositionException(index + 1, size);
+        }
+        return data[index];
+    }
+
+    // Subscript operator (const): validates 0-based index and throws InvalidPositionException
+    const T& operator[](int index) const
+    {
+        if (index < 0 || index >= size)
+        {
+            throw InvalidPositionException(index + 1, size);
+        }
+        return data[index];
+    }
+
+    // Removes element at specified 0-based index, shifting subsequent elements left
+    void removeAt(int index)
+    {
+        if (index < 0 || index >= size)
+        {
+            throw InvalidPositionException(index + 1, size);
+        }
+        for (int i = index; i < size - 1; ++i)
+        {
+            data[i] = data[i + 1];
+        }
+        --size;
+    }
+
+    // Resets size to 0 while keeping capacity allocated
+    void clear()
+    {
+        size = 0;
+    }
+
+    // Resizes buffer to newSize; initializes newly expanded elements to T()
+    void resize(int newSize)
+    {
+        if (newSize < 0)
+        {
+            throw InvalidInputException("New size cannot be negative: " +
+                                        StringUtils::intToString(newSize));
+        }
+        if (newSize > capacity)
+        {
+            int newCap = capacity * 2;
+            if (newCap < newSize)
+            {
+                newCap = newSize;
+            }
+            T* newData = new T[newCap];
+            for (int i = 0; i < size; ++i)
+            {
+                newData[i] = data[i];
+            }
+            delete[] data;
+            data     = newData;
+            capacity = newCap;
+        }
+        // If expanding, default-initialize new slots
+        for (int i = size; i < newSize; ++i)
+        {
+            data[i] = T();
+        }
+        size = newSize;
+    }
+
+    // State accessors
+    int  getSize() const     { return size; }
+    int  getCapacity() const { return capacity; }
+    bool isEmpty() const     { return size == 0; }
+};
+
+
+// ============================================================
+// SECTION 7B -- BOARD AND CONTAINER CLASSES (Refactored Module 8)
+// TileRack, Scrabble, and Cottage refactored to use DynamicArray<T>.
+// Raw DMA versions from Modules 4 and 5 are preserved in comments below.
 // ============================================================
 
 // TileRack manages an inventory of collected clue letter tiles.
-// Parallel dynamic arrays store Tile objects and their target word positions.
+// Uses DynamicArray<Tile> and DynamicArray<int> instead of manual raw arrays.
 class TileRack
 {
 private:
-    Tile* tiles;      // Dynamic array of Tile instances
-    int*  positions;  // Parallel dynamic array of 1-based board positions
-    int   capacity;   // Allocated capacity of the rack
-    int   count;      // Current number of tiles in the rack
+    // RAW DMA VERSION (Modules 4 and 5) - kept for reference, replaced by DynamicArray<T> in Module 8:
+    // Tile* tiles;      // Dynamic array of Tile instances
+    // int*  positions;  // Parallel dynamic array of 1-based board positions
+    // int   count;      // Current number of tiles in the rack
+
+    DynamicArray<Tile> tiles;      // Dynamic array of Tile instances
+    DynamicArray<int>  positions;  // Parallel dynamic array of 1-based board positions
+    int                capacity;   // Logical maximum capacity enforced by game rules
 
     friend class GameEngine;
 
@@ -381,13 +549,13 @@ public:
     // Constructs a rack with the specified capacity (minimum 1)
     explicit TileRack(int capacity = 8);
 
-    // Deep copy constructor
+    // Deep copy constructor (delegates to DynamicArray member deep copies)
     TileRack(const TileRack& other);
 
-    // Deep copy assignment operator
+    // Deep copy assignment operator (delegates to DynamicArray member assignment)
     TileRack& operator=(const TileRack& other);
 
-    // Destructor releasing dynamic memory
+    // Destructor (DynamicArray members automatically release their own memory)
     ~TileRack();
 
     // Adds a clue tile; throws if full, letter invalid, position < 1, or duplicate position
@@ -424,30 +592,34 @@ public:
 std::ostream& operator<<(std::ostream& out, const TileRack& rack);
 
 // Scrabble board manages the 2-row jagged crossword grid (7 letters for Word 1, 8 for Word 2).
+// Refactored from raw dynamic Tile** jagged array to two DynamicArray<Tile> rows.
 class Scrabble
 {
 private:
-    Tile**      grid;           // Jagged array: grid[0] has 7 tiles, grid[1] has 8 tiles
-    int         rowLength[2];   // Length of each row (7, 8)
-    std::string targetWord[2];  // Solution words for Word 1 and Word 2
-    bool        targetsLoaded;  // Whether target words have been configured
+    // RAW DMA VERSION (Modules 4 and 5) - kept for reference, replaced by DynamicArray<T> in Module 8:
+    // Tile** grid;           // Jagged array: grid[0] has 7 tiles, grid[1] has 8 tiles
+
+    DynamicArray<Tile> rows[2];        // Two DynamicArray rows: rows[0] length 7, rows[1] length 8
+    int                rowLength[2];   // Length of each row (7, 8)
+    std::string        targetWord[2];  // Solution words for Word 1 and Word 2
+    bool               targetsLoaded;  // Whether target words have been configured
 
     friend class GameEngine;
 
 public:
-    // Default constructor: allocates empty jagged grid
+    // Default constructor: allocates empty grid rows via DynamicArray
     Scrabble();
 
     // Parameterized constructor: loads target solution words
     Scrabble(const std::string& word1, const std::string& word2);
 
-    // Deep copy constructor
+    // Deep copy constructor (delegates to DynamicArray deep copies)
     Scrabble(const Scrabble& other);
 
-    // Deep copy assignment operator
+    // Deep copy assignment operator (delegates to DynamicArray assignment)
     Scrabble& operator=(const Scrabble& other);
 
-    // Destructor releasing both jagged grid rows and row pointer array
+    // Destructor (DynamicArray members automatically release their own memory)
     ~Scrabble();
 
     // Configures target solution words (must be 7 and 8 uppercase letters)
@@ -478,15 +650,15 @@ public:
 std::ostream& operator<<(std::ostream& out, const Scrabble& scrabble);
 
 // Cottage manages the searchable rooms of Mr. Leonardo's mansion.
-// In UML class diagrams (Decision R16), Cottage is related to Location via aggregation
-// (open diamond at Cottage, arrow to Location) because Location is a generic domain
-// record struct that could logically exist outside Cottage. At runtime, Cottage
-// manages the lifetime of each dynamically allocated Location via raw dynamic memory.
+// Refactored from raw Location** pointer array to DynamicArray<Location> (stored by value).
 class Cottage
 {
 private:
-    Location** locations;     // Dynamic array of pointers to Location instances
-    int        locationCount; // Total number of rooms in the cottage
+    // RAW DMA VERSION (Modules 4 and 5) - kept for reference, replaced by DynamicArray<T> in Module 8:
+    // Location** locations;     // Dynamic array of pointers to Location instances
+    // int        locationCount; // Total number of rooms in the cottage
+
+    DynamicArray<Location> locations; // Dynamic array of Location values
 
     friend class GameEngine;
 
@@ -494,19 +666,19 @@ public:
     // Default constructor: creates an empty cottage
     Cottage();
 
-    // Parameterized constructor: creates Location pointers from data records
+    // Parameterized constructor: creates Location instances from data records
     Cottage(const LocationRecord records[], int count, int culpritColumn);
 
-    // Deep copy constructor
+    // Deep copy constructor (delegates to DynamicArray member deep copy)
     Cottage(const Cottage& other);
 
     // Deep copy assignment operator (self-assignment safe)
     Cottage& operator=(const Cottage& other);
 
-    // Destructor releasing all individual Location objects and pointer array
+    // Destructor (DynamicArray members automatically release their own memory)
     ~Cottage();
 
-    // Accessors using 1-based room numbers (1 to locationCount); throws InvalidPositionException
+    // Accessors using 1-based room numbers (1 to location count); throws InvalidPositionException
     int         getLocationCount() const;
     bool        isLocationSearched(int number) const;
     Clue        searchLocation(int number);

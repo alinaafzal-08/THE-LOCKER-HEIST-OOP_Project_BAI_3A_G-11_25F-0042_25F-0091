@@ -1602,62 +1602,261 @@ std::ostream& operator<<(std::ostream& out, const Scrabble& scrabble)
     return out;
 }
 
-// TileRack Implementation using raw dynamic memory
+// ------------------------------------------------------------
+// RAW DMA VERSION (Modules 4 and 5) - kept for reference, replaced by DynamicArray<T> in Module 8
+// ------------------------------------------------------------
+// TileRack::TileRack(int cap)
+//     : capacity(cap), count(0)
+// {
+//     if (capacity < 1)
+//     {
+//         throw InvalidInputException("TileRack capacity must be at least 1; requested: " +
+//                                     StringUtils::intToString(cap));
+//     }
+//     tiles = new Tile[capacity];
+//     positions = new int[capacity];
+//     for (int i = 0; i < capacity; ++i)
+//     {
+//         tiles[i] = Tile{};
+//         positions[i] = 0;
+//     }
+// }
+// 
+// TileRack::TileRack(const TileRack& other)
+//     : capacity(other.capacity), count(other.count)
+// {
+//     tiles = new Tile[capacity];
+//     positions = new int[capacity];
+//     for (int i = 0; i < capacity; ++i)
+//     {
+//         tiles[i] = other.tiles[i];
+//         positions[i] = other.positions[i];
+//     }
+// }
+// 
+// TileRack& TileRack::operator=(const TileRack& other)
+// {
+//     if (this != &other)
+//     {
+//         delete[] tiles;
+//         delete[] positions;
+// 
+//         capacity  = other.capacity;
+//         count     = other.count;
+//         tiles     = new Tile[capacity];
+//         positions = new int[capacity];
+//         for (int i = 0; i < capacity; ++i)
+//         {
+//             tiles[i] = other.tiles[i];
+//             positions[i] = other.positions[i];
+//         }
+//     }
+//     return *this;
+// }
+// 
+// TileRack::~TileRack()
+// {
+//     delete[] tiles;
+//     delete[] positions;
+//     tiles = nullptr;
+//     positions = nullptr;
+// }
+// 
+// void TileRack::addTile(const Clue& clue)
+// {
+//     if (isFull())
+//     {
+//         throw RackFullException(capacity);
+//     }
+//     if (clue.clueLetter < 'A' || clue.clueLetter > 'Z')
+//     {
+//         throw InvalidLetterException(clue.clueLetter, clue.cluePosition);
+//     }
+//     if (clue.cluePosition < 1)
+//     {
+//         throw InvalidPositionException(clue.cluePosition, 8);
+//     }
+//     if (hasPosition(clue.cluePosition))
+//     {
+//         throw SlotFilledException(clue.cluePosition);
+//     }
+// 
+//     tiles[count].tileLetter = clue.clueLetter;
+//     tiles[count].filled     = false;
+//     positions[count]        = clue.cluePosition;
+//     ++count;
+// }
+// 
+// void TileRack::removeTile(int index)
+// {
+//     if (isEmpty())
+//     {
+//         throw RackEmptyException();
+//     }
+//     if (index < 0 || index >= count)
+//     {
+//         throw InvalidPositionException(index, count - 1);
+//     }
+// 
+//     for (int i = index; i < count - 1; ++i)
+//     {
+//         tiles[i]     = tiles[i + 1];
+//         positions[i] = positions[i + 1];
+//     }
+//     --count;
+//     tiles[count]     = Tile{};
+//     positions[count] = 0;
+// }
+// 
+// void TileRack::removeLast()
+// {
+//     if (isEmpty())
+//     {
+//         throw RackEmptyException();
+//     }
+//     removeTile(count - 1);
+// }
+// 
+// void TileRack::clear()
+// {
+//     count = 0;
+//     for (int i = 0; i < capacity; ++i)
+//     {
+//         tiles[i] = Tile{};
+//         positions[i] = 0;
+//     }
+// }
+// 
+// int TileRack::getCount() const
+// {
+//     return count;
+// }
+// 
+// int TileRack::getCapacity() const
+// {
+//     return capacity;
+// }
+// 
+// bool TileRack::isFull() const
+// {
+//     return count >= capacity;
+// }
+// 
+// bool TileRack::isEmpty() const
+// {
+//     return count == 0;
+// }
+// 
+// char TileRack::getLetterAt(int index) const
+// {
+//     if (index < 0 || index >= count)
+//     {
+//         throw InvalidPositionException(index, count - 1);
+//     }
+//     return tiles[index].tileLetter;
+// }
+// 
+// int TileRack::getPositionAt(int index) const
+// {
+//     if (index < 0 || index >= count)
+//     {
+//         throw InvalidPositionException(index, count - 1);
+//     }
+//     return positions[index];
+// }
+// 
+// bool TileRack::hasPosition(int position) const
+// {
+//     for (int i = 0; i < count; ++i)
+//     {
+//         if (positions[i] == position)
+//         {
+//             return true;
+//         }
+//     }
+//     return false;
+// }
+// 
+// void TileRack::markPlaced(int position)
+// {
+//     for (int i = 0; i < count; ++i)
+//     {
+//         if (positions[i] == position)
+//         {
+//             tiles[i].filled = true;
+//             return;
+//         }
+//     }
+//     throw InvalidPositionException(position, 8);
+// }
+// 
+// bool TileRack::isPlaced(int position) const
+// {
+//     for (int i = 0; i < count; ++i)
+//     {
+//         if (positions[i] == position)
+//         {
+//             return tiles[i].filled;
+//         }
+//     }
+//     return false;
+// }
+// 
+// void TileRack::display(std::ostream& out) const
+// {
+//     if (isEmpty())
+//     {
+//         out << "Rack: (empty)";
+//         return;
+//     }
+//     out << "Rack: ";
+//     for (int i = 0; i < count; ++i)
+//     {
+//         out << "[" << tiles[i].tileLetter << "@" << positions[i];
+//         if (tiles[i].filled)
+//         {
+//             out << "*";
+//         }
+//         out << "] ";
+//     }
+// }
+
+// ------------------------------------------------------------
+// REFACTORED TILERACK (Module 8) - using DynamicArray<T>
+// ------------------------------------------------------------
 TileRack::TileRack(int cap)
-    : capacity(cap), count(0)
+    : tiles(cap > 0 ? cap : 4),
+      positions(cap > 0 ? cap : 4),
+      capacity(cap)
 {
     if (capacity < 1)
     {
         throw InvalidInputException("TileRack capacity must be at least 1; requested: " +
                                     StringUtils::intToString(cap));
     }
-    tiles = new Tile[capacity];
-    positions = new int[capacity];
-    for (int i = 0; i < capacity; ++i)
-    {
-        tiles[i] = Tile{};
-        positions[i] = 0;
-    }
 }
 
 TileRack::TileRack(const TileRack& other)
-    : capacity(other.capacity), count(other.count)
+    : tiles(other.tiles),
+      positions(other.positions),
+      capacity(other.capacity)
 {
-    tiles = new Tile[capacity];
-    positions = new int[capacity];
-    for (int i = 0; i < capacity; ++i)
-    {
-        tiles[i] = other.tiles[i];
-        positions[i] = other.positions[i];
-    }
 }
 
 TileRack& TileRack::operator=(const TileRack& other)
 {
     if (this != &other)
     {
-        delete[] tiles;
-        delete[] positions;
-
+        tiles     = other.tiles;
+        positions = other.positions;
         capacity  = other.capacity;
-        count     = other.count;
-        tiles     = new Tile[capacity];
-        positions = new int[capacity];
-        for (int i = 0; i < capacity; ++i)
-        {
-            tiles[i] = other.tiles[i];
-            positions[i] = other.positions[i];
-        }
     }
     return *this;
 }
 
 TileRack::~TileRack()
 {
-    delete[] tiles;
-    delete[] positions;
-    tiles = nullptr;
-    positions = nullptr;
+    // DynamicArray members automatically release their own dynamic heap memory.
 }
 
 void TileRack::addTile(const Clue& clue)
@@ -1679,10 +1878,12 @@ void TileRack::addTile(const Clue& clue)
         throw SlotFilledException(clue.cluePosition);
     }
 
-    tiles[count].tileLetter = clue.clueLetter;
-    tiles[count].filled     = false;
-    positions[count]        = clue.cluePosition;
-    ++count;
+    Tile t;
+    t.tileLetter = clue.clueLetter;
+    t.filled     = false;
+
+    tiles.push(t);
+    positions.push(clue.cluePosition);
 }
 
 void TileRack::removeTile(int index)
@@ -1691,19 +1892,12 @@ void TileRack::removeTile(int index)
     {
         throw RackEmptyException();
     }
-    if (index < 0 || index >= count)
+    if (index < 0 || index >= tiles.getSize())
     {
-        throw InvalidPositionException(index, count - 1);
+        throw InvalidPositionException(index, tiles.getSize() - 1);
     }
-
-    for (int i = index; i < count - 1; ++i)
-    {
-        tiles[i]     = tiles[i + 1];
-        positions[i] = positions[i + 1];
-    }
-    --count;
-    tiles[count]     = Tile{};
-    positions[count] = 0;
+    tiles.removeAt(index);
+    positions.removeAt(index);
 }
 
 void TileRack::removeLast()
@@ -1712,22 +1906,18 @@ void TileRack::removeLast()
     {
         throw RackEmptyException();
     }
-    removeTile(count - 1);
+    removeTile(tiles.getSize() - 1);
 }
 
 void TileRack::clear()
 {
-    count = 0;
-    for (int i = 0; i < capacity; ++i)
-    {
-        tiles[i] = Tile{};
-        positions[i] = 0;
-    }
+    tiles.clear();
+    positions.clear();
 }
 
 int TileRack::getCount() const
 {
-    return count;
+    return tiles.getSize();
 }
 
 int TileRack::getCapacity() const
@@ -1737,35 +1927,35 @@ int TileRack::getCapacity() const
 
 bool TileRack::isFull() const
 {
-    return count >= capacity;
+    return tiles.getSize() >= capacity;
 }
 
 bool TileRack::isEmpty() const
 {
-    return count == 0;
+    return tiles.isEmpty();
 }
 
 char TileRack::getLetterAt(int index) const
 {
-    if (index < 0 || index >= count)
+    if (index < 0 || index >= tiles.getSize())
     {
-        throw InvalidPositionException(index, count - 1);
+        throw InvalidPositionException(index, tiles.getSize() - 1);
     }
     return tiles[index].tileLetter;
 }
 
 int TileRack::getPositionAt(int index) const
 {
-    if (index < 0 || index >= count)
+    if (index < 0 || index >= positions.getSize())
     {
-        throw InvalidPositionException(index, count - 1);
+        throw InvalidPositionException(index, positions.getSize() - 1);
     }
     return positions[index];
 }
 
 bool TileRack::hasPosition(int position) const
 {
-    for (int i = 0; i < count; ++i)
+    for (int i = 0; i < positions.getSize(); ++i)
     {
         if (positions[i] == position)
         {
@@ -1777,7 +1967,7 @@ bool TileRack::hasPosition(int position) const
 
 void TileRack::markPlaced(int position)
 {
-    for (int i = 0; i < count; ++i)
+    for (int i = 0; i < positions.getSize(); ++i)
     {
         if (positions[i] == position)
         {
@@ -1790,7 +1980,7 @@ void TileRack::markPlaced(int position)
 
 bool TileRack::isPlaced(int position) const
 {
-    for (int i = 0; i < count; ++i)
+    for (int i = 0; i < positions.getSize(); ++i)
     {
         if (positions[i] == position)
         {
@@ -1808,7 +1998,7 @@ void TileRack::display(std::ostream& out) const
         return;
     }
     out << "Rack: ";
-    for (int i = 0; i < count; ++i)
+    for (int i = 0; i < tiles.getSize(); ++i)
     {
         out << "[" << tiles[i].tileLetter << "@" << positions[i];
         if (tiles[i].filled)
@@ -1819,7 +2009,282 @@ void TileRack::display(std::ostream& out) const
     }
 }
 
-// Scrabble Jagged Board Implementation using raw dynamic memory
+
+// ------------------------------------------------------------
+// RAW DMA VERSION (Modules 4 and 5) - kept for reference, replaced by DynamicArray<T> in Module 8
+// ------------------------------------------------------------
+// Scrabble::Scrabble()
+//     : targetsLoaded(false)
+// {
+//     rowLength[0] = 7;
+//     rowLength[1] = 8;
+//     targetWord[0] = "";
+//     targetWord[1] = "";
+// 
+//     grid = new Tile*[2];
+//     grid[0] = new Tile[7];
+//     grid[1] = new Tile[8];
+// }
+// 
+// Scrabble::Scrabble(const std::string& word1, const std::string& word2)
+//     : targetsLoaded(false)
+// {
+//     rowLength[0] = 7;
+//     rowLength[1] = 8;
+//     targetWord[0] = "";
+//     targetWord[1] = "";
+// 
+//     grid = new Tile*[2];
+//     grid[0] = new Tile[7];
+//     grid[1] = new Tile[8];
+// 
+//     loadTargetWords(word1, word2);
+// }
+// 
+// Scrabble::Scrabble(const Scrabble& other)
+//     : targetsLoaded(other.targetsLoaded)
+// {
+//     rowLength[0]  = other.rowLength[0];
+//     rowLength[1]  = other.rowLength[1];
+//     targetWord[0] = other.targetWord[0];
+//     targetWord[1] = other.targetWord[1];
+// 
+//     grid = new Tile*[2];
+//     grid[0] = new Tile[rowLength[0]];
+//     grid[1] = new Tile[rowLength[1]];
+// 
+//     for (int i = 0; i < rowLength[0]; ++i)
+//     {
+//         grid[0][i] = other.grid[0][i];
+//     }
+//     for (int i = 0; i < rowLength[1]; ++i)
+//     {
+//         grid[1][i] = other.grid[1][i];
+//     }
+// }
+// 
+// Scrabble& Scrabble::operator=(const Scrabble& other)
+// {
+//     if (this != &other)
+//     {
+//         delete[] grid[0];
+//         delete[] grid[1];
+//         delete[] grid;
+// 
+//         rowLength[0]  = other.rowLength[0];
+//         rowLength[1]  = other.rowLength[1];
+//         targetWord[0] = other.targetWord[0];
+//         targetWord[1] = other.targetWord[1];
+//         targetsLoaded = other.targetsLoaded;
+// 
+//         grid = new Tile*[2];
+//         grid[0] = new Tile[rowLength[0]];
+//         grid[1] = new Tile[rowLength[1]];
+// 
+//         for (int i = 0; i < rowLength[0]; ++i)
+//         {
+//             grid[0][i] = other.grid[0][i];
+//         }
+//         for (int i = 0; i < rowLength[1]; ++i)
+//         {
+//             grid[1][i] = other.grid[1][i];
+//         }
+//     }
+//     return *this;
+// }
+// 
+// Scrabble::~Scrabble()
+// {
+//     delete[] grid[0];
+//     delete[] grid[1];
+//     delete[] grid;
+//     grid = nullptr;
+// }
+// 
+// void Scrabble::loadTargetWords(const std::string& word1, const std::string& word2)
+// {
+//     if (word1.length() != 7 || !StringUtils::isAllLetters(word1))
+//     {
+//         throw InvalidWordException("Word 1 must be 7 uppercase letters: " + word1);
+//     }
+//     for (size_t i = 0; i < word1.length(); ++i)
+//     {
+//         if (word1[i] < 'A' || word1[i] > 'Z')
+//         {
+//             throw InvalidWordException("Word 1 contains non-uppercase letter: " + word1);
+//         }
+//     }
+// 
+//     if (word2.length() != 8 || !StringUtils::isAllLetters(word2))
+//     {
+//         throw InvalidWordException("Word 2 must be 8 uppercase letters: " + word2);
+//     }
+//     for (size_t i = 0; i < word2.length(); ++i)
+//     {
+//         if (word2[i] < 'A' || word2[i] > 'Z')
+//         {
+//             throw InvalidWordException("Word 2 contains non-uppercase letter: " + word2);
+//         }
+//     }
+// 
+//     targetWord[0] = word1;
+//     targetWord[1] = word2;
+//     targetsLoaded = true;
+// }
+// 
+// void Scrabble::placeLetter(const Clue& clue)
+// {
+//     if (!targetsLoaded)
+//     {
+//         throw InvalidWordException("Target words are not loaded on Scrabble board");
+//     }
+// 
+//     int r = static_cast<int>(clue.clueRow);
+//     if (r < 0 || r > 1)
+//     {
+//         throw InvalidPositionException(r, 1);
+//     }
+// 
+//     if (clue.cluePosition < 1 || clue.cluePosition > rowLength[r])
+//     {
+//         throw InvalidPositionException(clue.cluePosition, rowLength[r]);
+//     }
+// 
+//     int idx = clue.cluePosition - 1;
+//     if (grid[r][idx].filled)
+//     {
+//         throw SlotFilledException(clue.cluePosition);
+//     }
+// 
+//     if (clue.clueLetter != targetWord[r][idx])
+//     {
+//         throw InvalidLetterException(clue.clueLetter, clue.cluePosition);
+//     }
+// 
+//     grid[r][idx].tileLetter = clue.clueLetter;
+//     grid[r][idx].filled     = true;
+// }
+// 
+// char Scrabble::revealLetter(WordRow row, int position) const
+// {
+//     int r = static_cast<int>(row);
+//     if (position < 1 || position > rowLength[r])
+//     {
+//         throw InvalidPositionException(position, rowLength[r]);
+//     }
+// 
+//     int idx = position - 1;
+//     return grid[r][idx].filled ? grid[r][idx].tileLetter : ' ';
+// }
+// 
+// bool Scrabble::isRowComplete(WordRow row) const
+// {
+//     int r = static_cast<int>(row);
+//     for (int i = 0; i < rowLength[r]; ++i)
+//     {
+//         if (!grid[r][i].filled)
+//         {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
+// 
+// bool Scrabble::isComplete() const
+// {
+//     return isRowComplete(WordRow::Word1) && isRowComplete(WordRow::Word2);
+// }
+// 
+// int Scrabble::getRowLength(WordRow row) const
+// {
+//     return rowLength[static_cast<int>(row)];
+// }
+// 
+// int Scrabble::getFilledCount(WordRow row) const
+// {
+//     int r = static_cast<int>(row);
+//     int filledCount = 0;
+//     for (int i = 0; i < rowLength[r]; ++i)
+//     {
+//         if (grid[r][i].filled)
+//         {
+//             ++filledCount;
+//         }
+//     }
+//     return filledCount;
+// }
+// 
+// std::string Scrabble::getRowString(WordRow row) const
+// {
+//     int r = static_cast<int>(row);
+//     std::string s = "";
+//     for (int i = 0; i < rowLength[r]; ++i)
+//     {
+//         s += (grid[r][i].filled ? grid[r][i].tileLetter : '_');
+//     }
+//     return s;
+// }
+// 
+// std::string Scrabble::getTargetWord(WordRow row) const
+// {
+//     return targetWord[static_cast<int>(row)];
+// }
+// 
+// void Scrabble::verifyWord(WordRow row, const std::string& typedWord) const
+// {
+//     int r = static_cast<int>(row);
+//     if (!isRowComplete(row))
+//     {
+//         throw WordIncompleteException(r == 0 ? "Word 1" : "Word 2");
+//     }
+// 
+//     if (!StringUtils::equalsIgnoreCase(typedWord, targetWord[r]))
+//     {
+//         throw InvalidWordException(typedWord);
+//     }
+// }
+// 
+// void Scrabble::display(std::ostream& out) const
+// {
+//     out << "Word 1: ";
+//     for (int i = 0; i < rowLength[0]; ++i)
+//     {
+//         if (grid[0][i].filled)
+//         {
+//             out << "[" << grid[0][i].tileLetter << "] ";
+//         }
+//         else
+//         {
+//             out << "[ ] ";
+//         }
+//     }
+//     if (isRowComplete(WordRow::Word1))
+//     {
+//         out << "COMPLETE";
+//     }
+// 
+//     out << "\nWord 2: ";
+//     for (int i = 0; i < rowLength[1]; ++i)
+//     {
+//         if (grid[1][i].filled)
+//         {
+//             out << "[" << grid[1][i].tileLetter << "] ";
+//         }
+//         else
+//         {
+//             out << "[ ] ";
+//         }
+//     }
+//     if (isRowComplete(WordRow::Word2))
+//     {
+//         out << "COMPLETE";
+//     }
+//     out << "\n";
+// }
+
+// ------------------------------------------------------------
+// REFACTORED SCRABBLE (Module 8) - using DynamicArray<Tile>
+// ------------------------------------------------------------
 Scrabble::Scrabble()
     : targetsLoaded(false)
 {
@@ -1828,9 +2293,8 @@ Scrabble::Scrabble()
     targetWord[0] = "";
     targetWord[1] = "";
 
-    grid = new Tile*[2];
-    grid[0] = new Tile[7];
-    grid[1] = new Tile[8];
+    rows[0].resize(7);
+    rows[1].resize(8);
 }
 
 Scrabble::Scrabble(const std::string& word1, const std::string& word2)
@@ -1841,9 +2305,8 @@ Scrabble::Scrabble(const std::string& word1, const std::string& word2)
     targetWord[0] = "";
     targetWord[1] = "";
 
-    grid = new Tile*[2];
-    grid[0] = new Tile[7];
-    grid[1] = new Tile[8];
+    rows[0].resize(7);
+    rows[1].resize(8);
 
     loadTargetWords(word1, word2);
 }
@@ -1856,56 +2319,29 @@ Scrabble::Scrabble(const Scrabble& other)
     targetWord[0] = other.targetWord[0];
     targetWord[1] = other.targetWord[1];
 
-    grid = new Tile*[2];
-    grid[0] = new Tile[rowLength[0]];
-    grid[1] = new Tile[rowLength[1]];
-
-    for (int i = 0; i < rowLength[0]; ++i)
-    {
-        grid[0][i] = other.grid[0][i];
-    }
-    for (int i = 0; i < rowLength[1]; ++i)
-    {
-        grid[1][i] = other.grid[1][i];
-    }
+    rows[0] = other.rows[0];
+    rows[1] = other.rows[1];
 }
 
 Scrabble& Scrabble::operator=(const Scrabble& other)
 {
     if (this != &other)
     {
-        delete[] grid[0];
-        delete[] grid[1];
-        delete[] grid;
-
+        targetsLoaded = other.targetsLoaded;
         rowLength[0]  = other.rowLength[0];
         rowLength[1]  = other.rowLength[1];
         targetWord[0] = other.targetWord[0];
         targetWord[1] = other.targetWord[1];
-        targetsLoaded = other.targetsLoaded;
 
-        grid = new Tile*[2];
-        grid[0] = new Tile[rowLength[0]];
-        grid[1] = new Tile[rowLength[1]];
-
-        for (int i = 0; i < rowLength[0]; ++i)
-        {
-            grid[0][i] = other.grid[0][i];
-        }
-        for (int i = 0; i < rowLength[1]; ++i)
-        {
-            grid[1][i] = other.grid[1][i];
-        }
+        rows[0] = other.rows[0];
+        rows[1] = other.rows[1];
     }
     return *this;
 }
 
 Scrabble::~Scrabble()
 {
-    delete[] grid[0];
-    delete[] grid[1];
-    delete[] grid;
-    grid = nullptr;
+    // DynamicArray members automatically release their own dynamic heap memory.
 }
 
 void Scrabble::loadTargetWords(const std::string& word1, const std::string& word2)
@@ -1937,6 +2373,12 @@ void Scrabble::loadTargetWords(const std::string& word1, const std::string& word
     targetWord[0] = word1;
     targetWord[1] = word2;
     targetsLoaded = true;
+
+    // Reset grid rows
+    rows[0].clear();
+    rows[1].clear();
+    rows[0].resize(7);
+    rows[1].resize(8);
 }
 
 void Scrabble::placeLetter(const Clue& clue)
@@ -1958,7 +2400,7 @@ void Scrabble::placeLetter(const Clue& clue)
     }
 
     int idx = clue.cluePosition - 1;
-    if (grid[r][idx].filled)
+    if (rows[r][idx].filled)
     {
         throw SlotFilledException(clue.cluePosition);
     }
@@ -1968,8 +2410,8 @@ void Scrabble::placeLetter(const Clue& clue)
         throw InvalidLetterException(clue.clueLetter, clue.cluePosition);
     }
 
-    grid[r][idx].tileLetter = clue.clueLetter;
-    grid[r][idx].filled     = true;
+    rows[r][idx].tileLetter = clue.clueLetter;
+    rows[r][idx].filled     = true;
 }
 
 char Scrabble::revealLetter(WordRow row, int position) const
@@ -1981,7 +2423,7 @@ char Scrabble::revealLetter(WordRow row, int position) const
     }
 
     int idx = position - 1;
-    return grid[r][idx].filled ? grid[r][idx].tileLetter : ' ';
+    return rows[r][idx].filled ? rows[r][idx].tileLetter : ' ';
 }
 
 bool Scrabble::isRowComplete(WordRow row) const
@@ -1989,7 +2431,7 @@ bool Scrabble::isRowComplete(WordRow row) const
     int r = static_cast<int>(row);
     for (int i = 0; i < rowLength[r]; ++i)
     {
-        if (!grid[r][i].filled)
+        if (!rows[r][i].filled)
         {
             return false;
         }
@@ -2013,7 +2455,7 @@ int Scrabble::getFilledCount(WordRow row) const
     int filledCount = 0;
     for (int i = 0; i < rowLength[r]; ++i)
     {
-        if (grid[r][i].filled)
+        if (rows[r][i].filled)
         {
             ++filledCount;
         }
@@ -2027,7 +2469,7 @@ std::string Scrabble::getRowString(WordRow row) const
     std::string s = "";
     for (int i = 0; i < rowLength[r]; ++i)
     {
-        s += (grid[r][i].filled ? grid[r][i].tileLetter : '_');
+        s += (rows[r][i].filled ? rows[r][i].tileLetter : '_');
     }
     return s;
 }
@@ -2056,9 +2498,9 @@ void Scrabble::display(std::ostream& out) const
     out << "Word 1: ";
     for (int i = 0; i < rowLength[0]; ++i)
     {
-        if (grid[0][i].filled)
+        if (rows[0][i].filled)
         {
-            out << "[" << grid[0][i].tileLetter << "] ";
+            out << "[" << rows[0][i].tileLetter << "] ";
         }
         else
         {
@@ -2073,9 +2515,9 @@ void Scrabble::display(std::ostream& out) const
     out << "\nWord 2: ";
     for (int i = 0; i < rowLength[1]; ++i)
     {
-        if (grid[1][i].filled)
+        if (rows[1][i].filled)
         {
-            out << "[" << grid[1][i].tileLetter << "] ";
+            out << "[" << rows[1][i].tileLetter << "] ";
         }
         else
         {
@@ -2090,25 +2532,197 @@ void Scrabble::display(std::ostream& out) const
 }
 
 
-// ============================================================
-// SECTION 7 -- COTTAGE IMPLEMENTATION (Commit 5 Raw DMA)
-// UML Design Note (Decision R16): In the class diagram, Cottage and Location
-// are related via aggregation (open diamond at Cottage, arrow to Location)
-// because a Location struct is a general domain concept representing rooms
-// that could logically exist independently of a Cottage container. At the C++
-// implementation level, Cottage owns the lifetime of its dynamic Location
-// instances allocated via new and released via delete.
-// ============================================================
+// ------------------------------------------------------------
+// RAW DMA VERSION (Modules 4 and 5) - kept for reference, replaced by DynamicArray<T> in Module 8
+// ------------------------------------------------------------
+// Cottage::Cottage()
+//     : locations(nullptr),
+//       locationCount(0)
+// {
+// }
+// 
+// Cottage::Cottage(const LocationRecord records[], int count, int culpritColumn)
+//     : locations(nullptr),
+//       locationCount(0)
+// {
+//     if (count < 0)
+//     {
+//         throw InvalidInputException("Location count cannot be negative");
+//     }
+//     if (culpritColumn < 0 || culpritColumn >= DataLoader::ROLE_COUNT)
+//     {
+//         throw InvalidInputException("Invalid culprit column index: " + StringUtils::intToString(culpritColumn));
+//     }
+// 
+//     if (count > 0)
+//     {
+//         locations = new Location*[count];
+//         locationCount = count;
+//         for (int i = 0; i < count; ++i)
+//         {
+//             locations[i] = new Location;
+//             locations[i]->locName       = records[i].placeName;
+//             locations[i]->letterClueLoc = records[i].letters[culpritColumn];
+//             locations[i]->boardPosLoc   = records[i].word1Pos;
+//             locations[i]->locRow        = WordRow::Word1;
+//             locations[i]->locSearchFlag = false;
+//         }
+//     }
+// }
+// 
+// Cottage::Cottage(const Cottage& other)
+//     : locations(nullptr),
+//       locationCount(other.locationCount)
+// {
+//     if (other.locationCount > 0 && other.locations != nullptr)
+//     {
+//         locations = new Location*[other.locationCount];
+//         for (int i = 0; i < other.locationCount; ++i)
+//         {
+//             locations[i] = new Location;
+//             *(locations[i]) = *(other.locations[i]);
+//         }
+//     }
+//     else
+//     {
+//         locations = nullptr;
+//         locationCount = 0;
+//     }
+// }
+// 
+// Cottage& Cottage::operator=(const Cottage& other)
+// {
+//     if (this != &other)
+//     {
+//         // Delete current dynamically allocated locations
+//         if (locations != nullptr)
+//         {
+//             for (int i = 0; i < locationCount; ++i)
+//             {
+//                 delete locations[i];
+//             }
+//             delete[] locations;
+//             locations = nullptr;
+//         }
+//         locationCount = 0;
+// 
+//         // Perform deep copy from other
+//         if (other.locationCount > 0 && other.locations != nullptr)
+//         {
+//             locations = new Location*[other.locationCount];
+//             locationCount = other.locationCount;
+//             for (int i = 0; i < other.locationCount; ++i)
+//             {
+//                 locations[i] = new Location;
+//                 *(locations[i]) = *(other.locations[i]);
+//             }
+//         }
+//     }
+//     return *this;
+// }
+// 
+// Cottage::~Cottage()
+// {
+//     if (locations != nullptr)
+//     {
+//         for (int i = 0; i < locationCount; ++i)
+//         {
+//             delete locations[i];
+//         }
+//         delete[] locations;
+//         locations = nullptr;
+//     }
+//     locationCount = 0;
+// }
+// 
+// int Cottage::getLocationCount() const
+// {
+//     return locationCount;
+// }
+// 
+// bool Cottage::isLocationSearched(int number) const
+// {
+//     if (number < 1 || number > locationCount)
+//     {
+//         throw InvalidPositionException(number, locationCount);
+//     }
+//     return locations[number - 1]->locSearchFlag;
+// }
+// 
+// Clue Cottage::searchLocation(int number)
+// {
+//     if (number < 1 || number > locationCount)
+//     {
+//         throw InvalidPositionException(number, locationCount);
+//     }
+//     locations[number - 1]->locSearchFlag = true;
+// 
+//     Clue c;
+//     c.clueLetter   = locations[number - 1]->letterClueLoc;
+//     c.cluePosition = locations[number - 1]->boardPosLoc;
+//     c.clueRow      = locations[number - 1]->locRow;
+//     return c;
+// }
+// 
+// Clue Cottage::getLocationClue(int number) const
+// {
+//     if (number < 1 || number > locationCount)
+//     {
+//         throw InvalidPositionException(number, locationCount);
+//     }
+//     Clue c;
+//     c.clueLetter   = locations[number - 1]->letterClueLoc;
+//     c.cluePosition = locations[number - 1]->boardPosLoc;
+//     c.clueRow      = locations[number - 1]->locRow;
+//     return c;
+// }
+// 
+// std::string Cottage::getLocationName(int number) const
+// {
+//     if (number < 1 || number > locationCount)
+//     {
+//         throw InvalidPositionException(number, locationCount);
+//     }
+//     return StringUtils::underscoreToSpace(locations[number - 1]->locName);
+// }
+// 
+// int Cottage::getSearchedCount() const
+// {
+//     int searched = 0;
+//     for (int i = 0; i < locationCount; ++i)
+//     {
+//         if (locations[i] != nullptr && locations[i]->locSearchFlag)
+//         {
+//             ++searched;
+//         }
+//     }
+//     return searched;
+// }
+// 
+// bool Cottage::allSearched() const
+// {
+//     return (locationCount > 0 && getSearchedCount() == locationCount);
+// }
+// 
+// void Cottage::displayLocations(std::ostream& out) const
+// {
+//     for (int i = 1; i <= locationCount; ++i)
+//     {
+//         out << "[" << i << "] " << getLocationName(i) << " - "
+//             << (isLocationSearched(i) ? "Searched" : "NOT Searched") << "\n";
+//     }
+// }
 
+// ------------------------------------------------------------
+// REFACTORED COTTAGE (Module 8) - using DynamicArray<Location>
+// ------------------------------------------------------------
 Cottage::Cottage()
-    : locations(nullptr),
-      locationCount(0)
+    : locations(4)
 {
 }
 
 Cottage::Cottage(const LocationRecord records[], int count, int culpritColumn)
-    : locations(nullptr),
-      locationCount(0)
+    : locations(count > 0 ? count : 4)
 {
     if (count < 0)
     {
@@ -2119,144 +2733,94 @@ Cottage::Cottage(const LocationRecord records[], int count, int culpritColumn)
         throw InvalidInputException("Invalid culprit column index: " + StringUtils::intToString(culpritColumn));
     }
 
-    if (count > 0)
+    for (int i = 0; i < count; ++i)
     {
-        locations = new Location*[count];
-        locationCount = count;
-        for (int i = 0; i < count; ++i)
-        {
-            locations[i] = new Location;
-            locations[i]->locName       = records[i].placeName;
-            locations[i]->letterClueLoc = records[i].letters[culpritColumn];
-            locations[i]->boardPosLoc   = records[i].word1Pos;
-            locations[i]->locRow        = WordRow::Word1;
-            locations[i]->locSearchFlag = false;
-        }
+        Location loc;
+        loc.locName       = records[i].placeName;
+        loc.letterClueLoc = records[i].letters[culpritColumn];
+        loc.boardPosLoc   = records[i].word1Pos;
+        loc.locRow        = WordRow::Word1;
+        loc.locSearchFlag = false;
+        locations.push(loc);
     }
 }
 
 Cottage::Cottage(const Cottage& other)
-    : locations(nullptr),
-      locationCount(other.locationCount)
+    : locations(other.locations)
 {
-    if (other.locationCount > 0 && other.locations != nullptr)
-    {
-        locations = new Location*[other.locationCount];
-        for (int i = 0; i < other.locationCount; ++i)
-        {
-            locations[i] = new Location;
-            *(locations[i]) = *(other.locations[i]);
-        }
-    }
-    else
-    {
-        locations = nullptr;
-        locationCount = 0;
-    }
 }
 
 Cottage& Cottage::operator=(const Cottage& other)
 {
     if (this != &other)
     {
-        // Delete current dynamically allocated locations
-        if (locations != nullptr)
-        {
-            for (int i = 0; i < locationCount; ++i)
-            {
-                delete locations[i];
-            }
-            delete[] locations;
-            locations = nullptr;
-        }
-        locationCount = 0;
-
-        // Perform deep copy from other
-        if (other.locationCount > 0 && other.locations != nullptr)
-        {
-            locations = new Location*[other.locationCount];
-            locationCount = other.locationCount;
-            for (int i = 0; i < other.locationCount; ++i)
-            {
-                locations[i] = new Location;
-                *(locations[i]) = *(other.locations[i]);
-            }
-        }
+        locations = other.locations;
     }
     return *this;
 }
 
 Cottage::~Cottage()
 {
-    if (locations != nullptr)
-    {
-        for (int i = 0; i < locationCount; ++i)
-        {
-            delete locations[i];
-        }
-        delete[] locations;
-        locations = nullptr;
-    }
-    locationCount = 0;
+    // DynamicArray members automatically release their own dynamic heap memory.
 }
 
 int Cottage::getLocationCount() const
 {
-    return locationCount;
+    return locations.getSize();
 }
 
 bool Cottage::isLocationSearched(int number) const
 {
-    if (number < 1 || number > locationCount)
+    if (number < 1 || number > locations.getSize())
     {
-        throw InvalidPositionException(number, locationCount);
+        throw InvalidPositionException(number, locations.getSize());
     }
-    return locations[number - 1]->locSearchFlag;
+    return locations[number - 1].locSearchFlag;
 }
 
 Clue Cottage::searchLocation(int number)
 {
-    if (number < 1 || number > locationCount)
+    if (number < 1 || number > locations.getSize())
     {
-        throw InvalidPositionException(number, locationCount);
+        throw InvalidPositionException(number, locations.getSize());
     }
-    locations[number - 1]->locSearchFlag = true;
+    locations[number - 1].locSearchFlag = true;
 
     Clue c;
-    c.clueLetter   = locations[number - 1]->letterClueLoc;
-    c.cluePosition = locations[number - 1]->boardPosLoc;
-    c.clueRow      = locations[number - 1]->locRow;
+    c.clueLetter   = locations[number - 1].letterClueLoc;
+    c.cluePosition = locations[number - 1].boardPosLoc;
+    c.clueRow      = locations[number - 1].locRow;
     return c;
 }
 
 Clue Cottage::getLocationClue(int number) const
 {
-    if (number < 1 || number > locationCount)
+    if (number < 1 || number > locations.getSize())
     {
-        throw InvalidPositionException(number, locationCount);
+        throw InvalidPositionException(number, locations.getSize());
     }
     Clue c;
-    c.clueLetter   = locations[number - 1]->letterClueLoc;
-    c.cluePosition = locations[number - 1]->boardPosLoc;
-    c.clueRow      = locations[number - 1]->locRow;
+    c.clueLetter   = locations[number - 1].letterClueLoc;
+    c.cluePosition = locations[number - 1].boardPosLoc;
+    c.clueRow      = locations[number - 1].locRow;
     return c;
 }
 
 std::string Cottage::getLocationName(int number) const
 {
-    if (number < 1 || number > locationCount)
+    if (number < 1 || number > locations.getSize())
     {
-        throw InvalidPositionException(number, locationCount);
+        throw InvalidPositionException(number, locations.getSize());
     }
-    return StringUtils::underscoreToSpace(locations[number - 1]->locName);
+    return StringUtils::underscoreToSpace(locations[number - 1].locName);
 }
 
 int Cottage::getSearchedCount() const
 {
     int searched = 0;
-    for (int i = 0; i < locationCount; ++i)
+    for (int i = 0; i < locations.getSize(); ++i)
     {
-        if (locations[i] != nullptr && locations[i]->locSearchFlag)
+        if (locations[i].locSearchFlag)
         {
             ++searched;
         }
@@ -2266,12 +2830,12 @@ int Cottage::getSearchedCount() const
 
 bool Cottage::allSearched() const
 {
-    return (locationCount > 0 && getSearchedCount() == locationCount);
+    return (locations.getSize() > 0 && getSearchedCount() == locations.getSize());
 }
 
 void Cottage::displayLocations(std::ostream& out) const
 {
-    for (int i = 1; i <= locationCount; ++i)
+    for (int i = 1; i <= locations.getSize(); ++i)
     {
         out << "[" << i << "] " << getLocationName(i) << " - "
             << (isLocationSearched(i) ? "Searched" : "NOT Searched") << "\n";

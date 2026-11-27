@@ -60,8 +60,8 @@ This script:
 ```powershell
 # From inside the TheLockerHeist folder:
 cd TheLockerHeist
-..\x64\Debug\heist.exe             # loads and verifies all data files (Commit 2, 3, 4, & 5)
-..\x64\Debug\heist.exe --selftest  # executes ST-01, ST-02, ST-03, ST-04, and ST-05 self-tests
+..\x64\Debug\heist.exe             # loads and verifies all data files (Commit 2, 3, 4, 5, & 6)
+..\x64\Debug\heist.exe --selftest  # executes ST-01, ST-02, ST-03, ST-04, ST-05, and ST-06 self-tests
 ```
 
 ---
@@ -138,6 +138,7 @@ generated code. The team is fully responsible for the final submission.
 | **ST-03** | Module 3 & 9 (Character hierarchy, Diamond inheritance, Factory, Deep Copy, Virtual Destructors) | 20 / 20 PASS |
 | **ST-04** | Module 4 & 5 (TileRack parallel arrays, Scrabble jagged 2D array, Raw DMA, Deep Copy, Bounds, Exceptions) | 39 / 39 PASS |
 | **ST-05** | Module 4 & 5 (Cottage raw DMA array of pointers, Detective composed racks, Word 1 search & verification) | 34 / 34 PASS |
+| **ST-06** | Module 8 (DynamicArray<T> generic container, auto-doubling, deep copy, refactored TileRack/Scrabble/Cottage) | 29 / 29 PASS |
 
 ---
 
