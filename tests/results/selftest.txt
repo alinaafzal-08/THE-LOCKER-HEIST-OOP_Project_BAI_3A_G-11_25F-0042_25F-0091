@@ -183,3 +183,58 @@ Word 2: [P] [Y] [R] [A] [M] [I] [D] [S] COMPLETE
   Result: 39 passed, 0 failed.
 ========================================
 
+
+========================================
+  ST-05  Cottage & Detective Self-Test
+========================================
+  [PASS] ST-05: Loaded 7 location records from locations.txt
+  [PASS] ST-05: Cottage locationCount is 7
+  [PASS] ST-05: Initially 0 locations searched
+  [PASS] ST-05: Initially allSearched() is false
+  [PASS] ST-05: getLocationName(1) converts underscores to spaces ('Bedroom 1')
+  [PASS] ST-05: Location 1 is initially NOT searched
+  [PASS] ST-05: Cottage searchLocation(0) throws InvalidPositionException
+  [PASS] ST-05: Cottage searchLocation(8) throws InvalidPositionException
+  [PASS] ST-05: Cottage isLocationSearched(0) throws InvalidPositionException
+  [PASS] ST-05: Cottage getLocationClue(8) throws InvalidPositionException
+  [PASS] ST-05: Cottage getLocationName(0) throws InvalidPositionException
+  [PASS] ST-05: Scrambled searches return expected PA clues, set flags, and repeat cleanly
+  [PASS] ST-05: Cottage getSearchedCount() is 7 after all searches
+  [PASS] ST-05: Cottage allSearched() is true after searching all 7 rooms
+  [PASS] ST-05: Scrabble Word 1 row is complete after placing all 7 location clues
+  [PASS] ST-05: Scrabble Word 1 spelled out 'PHARAOH'
+  [PASS] ST-05: Scrabble verifyWord(WordRow::Word1, 'PHARAOH') succeeded
+
+--- Sample Cottage displayLocations() Output ---
+[1] Bedroom 1 - Searched
+[2] Bedroom 2 - Searched
+[3] Study Room - Searched
+[4] Garden - Searched
+[5] Kitchen - Searched
+[6] Dining Room - Searched
+[7] Living Room - Searched
+  [PASS] ST-05: Cottage displayLocations() rendered with 'Searched' tags
+  [PASS] ST-05: Cottage copy constructor inherits searched status of room 1
+  [PASS] ST-05: Cottage copy assignment inherits searched status of room 1
+  [PASS] ST-05: copyCottage room 2 is searched
+  [PASS] ST-05: freshCottage room 2 remains NOT searched (independent heap memory)
+  [PASS] ST-05: assignCottage room 2 remains NOT searched
+  [PASS] ST-05: freshCottage room 3 is searched
+  [PASS] ST-05: assignCottage room 3 remains NOT searched (independent heap memory)
+  [PASS] ST-05: Cottage self-assignment is safe and preserves data
+  [PASS] ST-05: Detective locationRack contains 7 collected clues
+  [PASS] ST-05: Detective characterRack is initially empty
+  [PASS] ST-05: Detective characterRack filled to capacity (8 tiles)
+  [PASS] ST-05: 9th clue collected for Word 2 throws RackFullException
+  [PASS] ST-05: Detective copy has 7 location tiles
+  [PASS] ST-05: Detective copy location rack reduced to 6
+  [PASS] ST-05: Original Detective location rack remains intact at 7 (independent memory)
+
+--- Sample Detective displayRacks() Output ---
+Rack 1 (Locations): Rack: [A@3] [P@1] [H@7] [H@2] [A@5] [R@4] [O@6] 
+Rack 2 (People): Rack: [A@1] [B@2] [C@3] [D@4] [E@5] [F@6] [G@7] [H@8] 
+  [PASS] ST-05: Detective displayRacks() executed successfully
+----------------------------------------
+  Result: 34 passed, 0 failed.
+========================================
+

@@ -997,6 +997,214 @@ static int runBoardClassesSelfTest()
 }
 
 // ------------------------------------------------------------
+// runCottageAndDetectiveSelfTest()  --  ST-05 (Commit 5)
+// ------------------------------------------------------------
+static int runCottageAndDetectiveSelfTest()
+{
+    int passed = 0;
+    int failed = 0;
+
+    std::cout << "\n========================================\n";
+    std::cout << "  ST-05  Cottage & Detective Self-Test\n";
+    std::cout << "========================================\n";
+
+    // 1. Load real locations.txt
+    LocationRecord locRecords[DataLoader::LOCATION_COUNT];
+    int loaded = DataLoader::loadLocations(DataLoader::FILE_LOCATIONS, locRecords, DataLoader::LOCATION_COUNT);
+    check(loaded == 7, "ST-05: Loaded 7 location records from locations.txt", passed, failed);
+
+    // 2. Build Cottage with culprit column 5 (PA)
+    // Appendix A Table 8 / locations.txt for PA:
+    // Room 1 (Bedroom_1):   Pos 1, 'P'
+    // Room 2 (Bedroom_2):   Pos 2, 'H'
+    // Room 3 (Study_Room):  Pos 3, 'A'
+    // Room 4 (Garden):      Pos 4, 'R'
+    // Room 5 (Kitchen):     Pos 5, 'A'
+    // Room 6 (Dining_Room): Pos 6, 'O'
+    // Room 7 (Living_Room): Pos 7, 'H'
+    Cottage cottage(locRecords, loaded, 5);
+    check(cottage.getLocationCount() == 7, "ST-05: Cottage locationCount is 7", passed, failed);
+    check(cottage.getSearchedCount() == 0, "ST-05: Initially 0 locations searched", passed, failed);
+    check(!cottage.allSearched(), "ST-05: Initially allSearched() is false", passed, failed);
+
+    // Check displayLocations initially contains NOT Searched
+    {
+        std::string name1 = cottage.getLocationName(1);
+        check(name1 == "Bedroom 1", "ST-05: getLocationName(1) converts underscores to spaces ('Bedroom 1')", passed, failed);
+        check(!cottage.isLocationSearched(1), "ST-05: Location 1 is initially NOT searched", passed, failed);
+    }
+
+    // 3. Out-of-bounds positions throw InvalidPositionException (0 and 8)
+    {
+        bool caughtZero = false;
+        try { cottage.searchLocation(0); }
+        catch (const InvalidPositionException&) { caughtZero = true; }
+        check(caughtZero, "ST-05: Cottage searchLocation(0) throws InvalidPositionException", passed, failed);
+
+        bool caughtEight = false;
+        try { cottage.searchLocation(8); }
+        catch (const InvalidPositionException&) { caughtEight = true; }
+        check(caughtEight, "ST-05: Cottage searchLocation(8) throws InvalidPositionException", passed, failed);
+
+        bool caughtIsZero = false;
+        try { cottage.isLocationSearched(0); }
+        catch (const InvalidPositionException&) { caughtIsZero = true; }
+        check(caughtIsZero, "ST-05: Cottage isLocationSearched(0) throws InvalidPositionException", passed, failed);
+
+        bool caughtClueEight = false;
+        try { cottage.getLocationClue(8); }
+        catch (const InvalidPositionException&) { caughtClueEight = true; }
+        check(caughtClueEight, "ST-05: Cottage getLocationClue(8) throws InvalidPositionException", passed, failed);
+
+        bool caughtNameZero = false;
+        try { cottage.getLocationName(0); }
+        catch (const InvalidPositionException&) { caughtNameZero = true; }
+        check(caughtNameZero, "ST-05: Cottage getLocationName(0) throws InvalidPositionException", passed, failed);
+    }
+
+    // 4. Set up Scrabble and Detective to demonstrate integration
+    Scrabble scrabble("PHARAOH", "PYRAMIDS");
+    Detective detective("Sherlock", 100);
+
+    // Search locations 1 to 7 in a scrambled order: 3, 1, 7, 2, 5, 4, 6
+    int scrambledOrder[7] = { 3, 1, 7, 2, 5, 4, 6 };
+    char expectedLetters[7]   = { 'A', 'P', 'H', 'H', 'A', 'R', 'O' }; // corresponding to rooms 3, 1, 7, 2, 5, 4, 6
+    int  expectedPositions[7] = { 3,   1,   7,   2,   5,   4,   6   }; // corresponding positions in Word 1
+
+    bool cluesCorrect = true;
+    for (int k = 0; k < 7; ++k)
+    {
+        int roomNum = scrambledOrder[k];
+        Clue searchedClue = cottage.searchLocation(roomNum);
+
+        if (searchedClue.clueLetter != expectedLetters[k] ||
+            searchedClue.cluePosition != expectedPositions[k] ||
+            searchedClue.clueRow != WordRow::Word1)
+        {
+            cluesCorrect = false;
+        }
+
+        if (!cottage.isLocationSearched(roomNum))
+        {
+            cluesCorrect = false;
+        }
+
+        // Repeat getLocationClue returns same clue without changing state
+        Clue repeatClue = cottage.getLocationClue(roomNum);
+        if (repeatClue.clueLetter != searchedClue.clueLetter ||
+            repeatClue.cluePosition != searchedClue.cluePosition ||
+            repeatClue.clueRow != searchedClue.clueRow)
+        {
+            cluesCorrect = false;
+        }
+
+        // Place clue into scrabble and detective's rack
+        scrabble.placeLetter(searchedClue);
+        detective.collectClue(searchedClue);
+    }
+    check(cluesCorrect, "ST-05: Scrambled searches return expected PA clues, set flags, and repeat cleanly", passed, failed);
+    check(cottage.getSearchedCount() == 7, "ST-05: Cottage getSearchedCount() is 7 after all searches", passed, failed);
+    check(cottage.allSearched(), "ST-05: Cottage allSearched() is true after searching all 7 rooms", passed, failed);
+
+    // 5. Scrabble Word 1 completion and verification
+    check(scrabble.isRowComplete(WordRow::Word1), "ST-05: Scrabble Word 1 row is complete after placing all 7 location clues", passed, failed);
+    check(scrabble.getRowString(WordRow::Word1) == "PHARAOH", "ST-05: Scrabble Word 1 spelled out 'PHARAOH'", passed, failed);
+    bool word1Verified = false;
+    try
+    {
+        scrabble.verifyWord(WordRow::Word1, "PHARAOH");
+        word1Verified = true;
+    }
+    catch (...) { word1Verified = false; }
+    check(word1Verified, "ST-05: Scrabble verifyWord(WordRow::Word1, 'PHARAOH') succeeded", passed, failed);
+
+    // 6. Display locations sample output
+    std::cout << "\n--- Sample Cottage displayLocations() Output ---\n";
+    cottage.displayLocations(std::cout);
+    check(true, "ST-05: Cottage displayLocations() rendered with 'Searched' tags", passed, failed);
+
+    // 7. Cottage DEEP COPY: copy constructor and assignment operator
+    {
+        Cottage freshCottage(locRecords, loaded, 5);
+        freshCottage.searchLocation(1); // Search room 1 in original
+
+        Cottage copyCottage = freshCottage; // Copy constructor
+        Cottage assignCottage;
+        assignCottage = freshCottage;       // Copy assignment
+
+        check(copyCottage.isLocationSearched(1), "ST-05: Cottage copy constructor inherits searched status of room 1", passed, failed);
+        check(assignCottage.isLocationSearched(1), "ST-05: Cottage copy assignment inherits searched status of room 1", passed, failed);
+
+        // Search room 2 only in copyCottage
+        copyCottage.searchLocation(2);
+        check(copyCottage.isLocationSearched(2), "ST-05: copyCottage room 2 is searched", passed, failed);
+        check(!freshCottage.isLocationSearched(2), "ST-05: freshCottage room 2 remains NOT searched (independent heap memory)", passed, failed);
+        check(!assignCottage.isLocationSearched(2), "ST-05: assignCottage room 2 remains NOT searched", passed, failed);
+
+        // Search room 3 in freshCottage
+        freshCottage.searchLocation(3);
+        check(freshCottage.isLocationSearched(3), "ST-05: freshCottage room 3 is searched", passed, failed);
+        check(!assignCottage.isLocationSearched(3), "ST-05: assignCottage room 3 remains NOT searched (independent heap memory)", passed, failed);
+
+        // Self-assignment
+        freshCottage = freshCottage;
+        check(freshCottage.getLocationCount() == 7 && freshCottage.isLocationSearched(1) && freshCottage.isLocationSearched(3),
+              "ST-05: Cottage self-assignment is safe and preserves data", passed, failed);
+    }
+
+    // 8. Detective with composed racks
+    {
+        check(detective.getRack(WordRow::Word1).getCount() == 7,
+              "ST-05: Detective locationRack contains 7 collected clues", passed, failed);
+        check(detective.getRack(WordRow::Word2).getCount() == 0,
+              "ST-05: Detective characterRack is initially empty", passed, failed);
+
+        // Collect 8 clues for Word 2
+        for (int i = 1; i <= 8; ++i)
+        {
+            detective.collectClue(Clue{static_cast<char>('A' + i - 1), i, WordRow::Word2});
+        }
+        check(detective.getRack(WordRow::Word2).getCount() == 8,
+              "ST-05: Detective characterRack filled to capacity (8 tiles)", passed, failed);
+
+        // Attempting to add a 9th clue to characterRack (capacity 8) throws RackFullException
+        bool caughtRackFull = false;
+        try
+        {
+            detective.collectClue(Clue{'Z', 9, WordRow::Word2});
+        }
+        catch (const RackFullException&)
+        {
+            caughtRackFull = true;
+        }
+        check(caughtRackFull, "ST-05: 9th clue collected for Word 2 throws RackFullException", passed, failed);
+
+        // Detective deep copy test
+        Detective detCopy = detective;
+        check(detCopy.getRack(WordRow::Word1).getCount() == 7,
+              "ST-05: Detective copy has 7 location tiles", passed, failed);
+
+        // Modifying detCopy rack does not affect detective original rack
+        detCopy.getRack(WordRow::Word1).removeLast();
+        check(detCopy.getRack(WordRow::Word1).getCount() == 6,
+              "ST-05: Detective copy location rack reduced to 6", passed, failed);
+        check(detective.getRack(WordRow::Word1).getCount() == 7,
+              "ST-05: Original Detective location rack remains intact at 7 (independent memory)", passed, failed);
+
+        // Display racks check
+        std::cout << "\n--- Sample Detective displayRacks() Output ---\n";
+        detective.displayRacks(std::cout);
+        check(true, "ST-05: Detective displayRacks() executed successfully", passed, failed);
+    }
+
+    std::cout << "----------------------------------------\n";
+    std::cout << "  Result: " << passed << " passed, " << failed << " failed.\n";
+    std::cout << "========================================\n\n";
+
+    return failed;
+}
+
+// ------------------------------------------------------------
 // main()
 // ------------------------------------------------------------
 int main(int argc, char* argv[])
@@ -1009,6 +1217,7 @@ int main(int argc, char* argv[])
         totalFailures += runDataLoaderSelfTest();
         totalFailures += runCharacterHierarchySelfTest();
         totalFailures += runBoardClassesSelfTest();
+        totalFailures += runCottageAndDetectiveSelfTest();
         return (totalFailures > 0) ? 1 : 0;
     }
 

@@ -1127,7 +1127,9 @@ int Victim::getMinimumCredibility() const
 Detective::Detective(const std::string& name, int startingCredibility)
     : Character(name, "Detective", DEFAULT_NATIONALITY),
       credibility(startingCredibility),
-      turns(0)
+      turns(0),
+      locationRack(7),
+      characterRack(8)
 {
     solvedWords = new std::string[2];
     solvedWords[0] = "";
@@ -1137,7 +1139,9 @@ Detective::Detective(const std::string& name, int startingCredibility)
 Detective::Detective(const Detective& other)
     : Character(other),
       credibility(other.credibility),
-      turns(other.turns)
+      turns(other.turns),
+      locationRack(other.locationRack),
+      characterRack(other.characterRack)
 {
     solvedWords = new std::string[2];
     solvedWords[0] = other.solvedWords[0];
@@ -1153,6 +1157,8 @@ Detective& Detective::operator=(const Detective& other)
         turns          = other.turns;
         solvedWords[0] = other.solvedWords[0];
         solvedWords[1] = other.solvedWords[1];
+        locationRack   = other.locationRack;
+        characterRack  = other.characterRack;
     }
     return *this;
 }
@@ -1214,12 +1220,46 @@ bool Detective::areBothSolved() const
     return isRowSolved(WordRow::Word1) && isRowSolved(WordRow::Word2);
 }
 
+// Composition: routing clues to composed locationRack and characterRack
+void Detective::collectClue(const Clue& clue)
+{
+    if (clue.clueRow == WordRow::Word1)
+    {
+        locationRack.addTile(clue);
+    }
+    else
+    {
+        characterRack.addTile(clue);
+    }
+}
+
+const TileRack& Detective::getRack(WordRow row) const
+{
+    return (row == WordRow::Word1) ? locationRack : characterRack;
+}
+
+TileRack& Detective::getRack(WordRow row)
+{
+    return (row == WordRow::Word1) ? locationRack : characterRack;
+}
+
+void Detective::displayRacks(std::ostream& out) const
+{
+    out << "Rack 1 (Locations): ";
+    locationRack.display(out);
+    out << "\n";
+    out << "Rack 2 (People): ";
+    characterRack.display(out);
+    out << "\n";
+}
+
 void Detective::display(std::ostream& out) const
 {
     out << StringUtils::formatPersonName(getName())
         << " [Detective] - Credibility: " << credibility
         << ", Turns: " << turns
-        << ", Solved: [" << solvedWords[0] << ", " << solvedWords[1] << "]";
+        << ", Solved: [" << solvedWords[0] << ", " << solvedWords[1] << "]\n";
+    displayRacks(out);
 }
 
 
@@ -2047,4 +2087,199 @@ void Scrabble::display(std::ostream& out) const
         out << "COMPLETE";
     }
     out << "\n";
+}
+
+
+// ============================================================
+// SECTION 7 -- COTTAGE IMPLEMENTATION (Commit 5 Raw DMA)
+// UML Design Note (Decision R16): In the class diagram, Cottage and Location
+// are related via aggregation (open diamond at Cottage, arrow to Location)
+// because a Location struct is a general domain concept representing rooms
+// that could logically exist independently of a Cottage container. At the C++
+// implementation level, Cottage owns the lifetime of its dynamic Location
+// instances allocated via new and released via delete.
+// ============================================================
+
+Cottage::Cottage()
+    : locations(nullptr),
+      locationCount(0)
+{
+}
+
+Cottage::Cottage(const LocationRecord records[], int count, int culpritColumn)
+    : locations(nullptr),
+      locationCount(0)
+{
+    if (count < 0)
+    {
+        throw InvalidInputException("Location count cannot be negative");
+    }
+    if (culpritColumn < 0 || culpritColumn >= DataLoader::ROLE_COUNT)
+    {
+        throw InvalidInputException("Invalid culprit column index: " + StringUtils::intToString(culpritColumn));
+    }
+
+    if (count > 0)
+    {
+        locations = new Location*[count];
+        locationCount = count;
+        for (int i = 0; i < count; ++i)
+        {
+            locations[i] = new Location;
+            locations[i]->locName       = records[i].placeName;
+            locations[i]->letterClueLoc = records[i].letters[culpritColumn];
+            locations[i]->boardPosLoc   = records[i].word1Pos;
+            locations[i]->locRow        = WordRow::Word1;
+            locations[i]->locSearchFlag = false;
+        }
+    }
+}
+
+Cottage::Cottage(const Cottage& other)
+    : locations(nullptr),
+      locationCount(other.locationCount)
+{
+    if (other.locationCount > 0 && other.locations != nullptr)
+    {
+        locations = new Location*[other.locationCount];
+        for (int i = 0; i < other.locationCount; ++i)
+        {
+            locations[i] = new Location;
+            *(locations[i]) = *(other.locations[i]);
+        }
+    }
+    else
+    {
+        locations = nullptr;
+        locationCount = 0;
+    }
+}
+
+Cottage& Cottage::operator=(const Cottage& other)
+{
+    if (this != &other)
+    {
+        // Delete current dynamically allocated locations
+        if (locations != nullptr)
+        {
+            for (int i = 0; i < locationCount; ++i)
+            {
+                delete locations[i];
+            }
+            delete[] locations;
+            locations = nullptr;
+        }
+        locationCount = 0;
+
+        // Perform deep copy from other
+        if (other.locationCount > 0 && other.locations != nullptr)
+        {
+            locations = new Location*[other.locationCount];
+            locationCount = other.locationCount;
+            for (int i = 0; i < other.locationCount; ++i)
+            {
+                locations[i] = new Location;
+                *(locations[i]) = *(other.locations[i]);
+            }
+        }
+    }
+    return *this;
+}
+
+Cottage::~Cottage()
+{
+    if (locations != nullptr)
+    {
+        for (int i = 0; i < locationCount; ++i)
+        {
+            delete locations[i];
+        }
+        delete[] locations;
+        locations = nullptr;
+    }
+    locationCount = 0;
+}
+
+int Cottage::getLocationCount() const
+{
+    return locationCount;
+}
+
+bool Cottage::isLocationSearched(int number) const
+{
+    if (number < 1 || number > locationCount)
+    {
+        throw InvalidPositionException(number, locationCount);
+    }
+    return locations[number - 1]->locSearchFlag;
+}
+
+Clue Cottage::searchLocation(int number)
+{
+    if (number < 1 || number > locationCount)
+    {
+        throw InvalidPositionException(number, locationCount);
+    }
+    locations[number - 1]->locSearchFlag = true;
+
+    Clue c;
+    c.clueLetter   = locations[number - 1]->letterClueLoc;
+    c.cluePosition = locations[number - 1]->boardPosLoc;
+    c.clueRow      = locations[number - 1]->locRow;
+    return c;
+}
+
+Clue Cottage::getLocationClue(int number) const
+{
+    if (number < 1 || number > locationCount)
+    {
+        throw InvalidPositionException(number, locationCount);
+    }
+    Clue c;
+    c.clueLetter   = locations[number - 1]->letterClueLoc;
+    c.cluePosition = locations[number - 1]->boardPosLoc;
+    c.clueRow      = locations[number - 1]->locRow;
+    return c;
+}
+
+std::string Cottage::getLocationName(int number) const
+{
+    if (number < 1 || number > locationCount)
+    {
+        throw InvalidPositionException(number, locationCount);
+    }
+    return StringUtils::underscoreToSpace(locations[number - 1]->locName);
+}
+
+int Cottage::getSearchedCount() const
+{
+    int searched = 0;
+    for (int i = 0; i < locationCount; ++i)
+    {
+        if (locations[i] != nullptr && locations[i]->locSearchFlag)
+        {
+            ++searched;
+        }
+    }
+    return searched;
+}
+
+bool Cottage::allSearched() const
+{
+    return (locationCount > 0 && getSearchedCount() == locationCount);
+}
+
+void Cottage::displayLocations(std::ostream& out) const
+{
+    for (int i = 1; i <= locationCount; ++i)
+    {
+        out << "[" << i << "] " << getLocationName(i) << " - "
+            << (isLocationSearched(i) ? "Searched" : "NOT Searched") << "\n";
+    }
+}
+
+std::ostream& operator<<(std::ostream& out, const Cottage& cottage)
+{
+    cottage.displayLocations(out);
+    return out;
 }

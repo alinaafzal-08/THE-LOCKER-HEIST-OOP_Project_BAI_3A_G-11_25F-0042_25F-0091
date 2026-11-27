@@ -358,7 +358,173 @@ public:
 
 
 // ============================================================
-// SECTION 7 -- CHARACTER HIERARCHY (Commit 3, Module 3 & 9)
+// SECTION 7 -- BOARD AND CONTAINER CLASSES (Commit 4 & 5, Module 4 & 5)
+// Raw dynamic memory implementations: TileRack, Scrabble, and Cottage.
+// Note: In Commit 6, TileRack will be adapted to use DynamicArray<T>.
+// All comments in raw memory blocks use single-line style (//) to prevent
+// nested block comment syntax errors during future refactoring.
+// ============================================================
+
+// TileRack manages an inventory of collected clue letter tiles.
+// Parallel dynamic arrays store Tile objects and their target word positions.
+class TileRack
+{
+private:
+    Tile* tiles;      // Dynamic array of Tile instances
+    int*  positions;  // Parallel dynamic array of 1-based board positions
+    int   capacity;   // Allocated capacity of the rack
+    int   count;      // Current number of tiles in the rack
+
+    friend class GameEngine;
+
+public:
+    // Constructs a rack with the specified capacity (minimum 1)
+    explicit TileRack(int capacity = 8);
+
+    // Deep copy constructor
+    TileRack(const TileRack& other);
+
+    // Deep copy assignment operator
+    TileRack& operator=(const TileRack& other);
+
+    // Destructor releasing dynamic memory
+    ~TileRack();
+
+    // Adds a clue tile; throws if full, letter invalid, position < 1, or duplicate position
+    void addTile(const Clue& clue);
+
+    // Removes tile at index, shifting remaining tiles left
+    void removeTile(int index);
+
+    // Removes the most recently added tile
+    void removeLast();
+
+    // Clears all tiles from the rack
+    void clear();
+
+    // Accessors
+    int  getCount() const;
+    int  getCapacity() const;
+    bool isFull() const;
+    bool isEmpty() const;
+
+    char getLetterAt(int index) const;
+    int  getPositionAt(int index) const;
+    bool hasPosition(int position) const;
+
+    // Status tracking for placed tiles
+    void markPlaced(int position);
+    bool isPlaced(int position) const;
+
+    // Renders rack contents to the output stream
+    void display(std::ostream& out) const;
+};
+
+// Stream insertion operator for TileRack
+std::ostream& operator<<(std::ostream& out, const TileRack& rack);
+
+// Scrabble board manages the 2-row jagged crossword grid (7 letters for Word 1, 8 for Word 2).
+class Scrabble
+{
+private:
+    Tile**      grid;           // Jagged array: grid[0] has 7 tiles, grid[1] has 8 tiles
+    int         rowLength[2];   // Length of each row (7, 8)
+    std::string targetWord[2];  // Solution words for Word 1 and Word 2
+    bool        targetsLoaded;  // Whether target words have been configured
+
+    friend class GameEngine;
+
+public:
+    // Default constructor: allocates empty jagged grid
+    Scrabble();
+
+    // Parameterized constructor: loads target solution words
+    Scrabble(const std::string& word1, const std::string& word2);
+
+    // Deep copy constructor
+    Scrabble(const Scrabble& other);
+
+    // Deep copy assignment operator
+    Scrabble& operator=(const Scrabble& other);
+
+    // Destructor releasing both jagged grid rows and row pointer array
+    ~Scrabble();
+
+    // Configures target solution words (must be 7 and 8 uppercase letters)
+    void loadTargetWords(const std::string& word1, const std::string& word2);
+
+    // Places a clue letter into the grid matching target letter and position
+    void placeLetter(const Clue& clue);
+
+    // Reveals letter at specified 1-based position or space if unfilled
+    char revealLetter(WordRow row, int position) const;
+
+    // Verification and state inspection
+    bool isRowComplete(WordRow row) const;
+    bool isComplete() const;
+    int  getRowLength(WordRow row) const;
+    int  getFilledCount(WordRow row) const;
+    std::string getRowString(WordRow row) const;
+    std::string getTargetWord(WordRow row) const;
+
+    // Verifies full row matches typed guess case-insensitively
+    void verifyWord(WordRow row, const std::string& typedWord) const;
+
+    // Renders the current state of both word rows
+    void display(std::ostream& out) const;
+};
+
+// Stream insertion operator for Scrabble
+std::ostream& operator<<(std::ostream& out, const Scrabble& scrabble);
+
+// Cottage manages the searchable rooms of Mr. Leonardo's mansion.
+// In UML class diagrams (Decision R16), Cottage is related to Location via aggregation
+// (open diamond at Cottage, arrow to Location) because Location is a generic domain
+// record struct that could logically exist outside Cottage. At runtime, Cottage
+// manages the lifetime of each dynamically allocated Location via raw dynamic memory.
+class Cottage
+{
+private:
+    Location** locations;     // Dynamic array of pointers to Location instances
+    int        locationCount; // Total number of rooms in the cottage
+
+    friend class GameEngine;
+
+public:
+    // Default constructor: creates an empty cottage
+    Cottage();
+
+    // Parameterized constructor: creates Location pointers from data records
+    Cottage(const LocationRecord records[], int count, int culpritColumn);
+
+    // Deep copy constructor
+    Cottage(const Cottage& other);
+
+    // Deep copy assignment operator (self-assignment safe)
+    Cottage& operator=(const Cottage& other);
+
+    // Destructor releasing all individual Location objects and pointer array
+    ~Cottage();
+
+    // Accessors using 1-based room numbers (1 to locationCount); throws InvalidPositionException
+    int         getLocationCount() const;
+    bool        isLocationSearched(int number) const;
+    Clue        searchLocation(int number);
+    Clue        getLocationClue(int number) const;
+    std::string getLocationName(int number) const;
+    int         getSearchedCount() const;
+    bool        allSearched() const;
+
+    // Renders list of locations with search status to output stream
+    void displayLocations(std::ostream& out = std::cout) const;
+};
+
+// Stream insertion operator for Cottage
+std::ostream& operator<<(std::ostream& out, const Cottage& cottage);
+
+
+// ============================================================
+// SECTION 8 -- CHARACTER HIERARCHY (Commit 3, Module 3 & 9)
 // Abstract Character base class, polymorphic hierarchy, multiple and
 // virtual inheritance for the PA diamond problem, and CharacterFactory.
 // ============================================================
@@ -421,7 +587,7 @@ public:
 };
 
 // Detective represents the playable investigator, managing credibility, turns,
-// and a heap-allocated array of solved secret words with deep copy semantics.
+// dynamic arrays of solved words, and composed TileRacks with deep copy semantics.
 class Detective : public Character
 {
 private:
@@ -429,10 +595,16 @@ private:
     int          turns;
     std::string* solvedWords; // Dynamic array of 2 strings [Word1, Word2]
 
+    // Composition: Detective directly owns two TileRack instances for clue storage (R15)
+    TileRack locationRack;  // Holds Word 1 letter clues (capacity 7)
+    TileRack characterRack; // Holds Word 2 letter clues (capacity 8)
+
+    friend class GameEngine;
+
 public:
     static const std::string DEFAULT_NATIONALITY;
 
-    explicit Detective(const std::string& name, int startingCredibility = 100);
+    explicit Detective(const std::string& name = "Sherlock", int startingCredibility = 100);
     Detective(const Detective& other);
     Detective& operator=(const Detective& other);
     virtual ~Detective() override;
@@ -445,6 +617,12 @@ public:
     std::string getSolvedWord(WordRow row) const;
     bool        isRowSolved(WordRow row) const;
     bool        areBothSolved() const;
+
+    // Clue and rack operations (composition)
+    void            collectClue(const Clue& clue);
+    const TileRack& getRack(WordRow row) const;
+    TileRack&       getRack(WordRow row);
+    void            displayRacks(std::ostream& out = std::cout) const;
 
     void display(std::ostream& out) const override;
 };
@@ -590,122 +768,3 @@ public:
 };
 
 
-// ============================================================
-// SECTION 8 -- BOARD CLASSES (MODULE 4 & 5, COMMIT 4 RAW DMA)
-// Note: TileRack and Scrabble use raw dynamic memory allocation (new/delete)
-// in Commit 4. In Commit 6, this implementation will be adapted to
-// DynamicArray<T>. All comments here use single-line style (//)
-// to prevent nested comment syntax errors during future refactoring.
-// ============================================================
-
-// TileRack manages an inventory of collected clue letter tiles.
-// Parallel dynamic arrays store Tile objects and their target word positions.
-class TileRack
-{
-private:
-    Tile* tiles;      // Dynamic array of Tile instances
-    int*  positions;  // Parallel dynamic array of 1-based board positions
-    int   capacity;   // Allocated capacity of the rack
-    int   count;      // Current number of tiles in the rack
-
-    friend class GameEngine;
-
-public:
-    // Constructs a rack with the specified capacity (minimum 1)
-    explicit TileRack(int capacity = 8);
-
-    // Deep copy constructor
-    TileRack(const TileRack& other);
-
-    // Deep copy assignment operator
-    TileRack& operator=(const TileRack& other);
-
-    // Destructor releasing dynamic memory
-    ~TileRack();
-
-    // Adds a clue tile; throws if full, letter invalid, position < 1, or duplicate position
-    void addTile(const Clue& clue);
-
-    // Removes tile at index, shifting remaining tiles left
-    void removeTile(int index);
-
-    // Removes the most recently added tile
-    void removeLast();
-
-    // Clears all tiles from the rack
-    void clear();
-
-    // Accessors
-    int  getCount() const;
-    int  getCapacity() const;
-    bool isFull() const;
-    bool isEmpty() const;
-
-    char getLetterAt(int index) const;
-    int  getPositionAt(int index) const;
-    bool hasPosition(int position) const;
-
-    // Status tracking for placed tiles
-    void markPlaced(int position);
-    bool isPlaced(int position) const;
-
-    // Renders rack contents to the output stream
-    void display(std::ostream& out) const;
-};
-
-// Stream insertion operator for TileRack
-std::ostream& operator<<(std::ostream& out, const TileRack& rack);
-
-// Scrabble board manages the 2-row jagged crossword grid (7 letters for Word 1, 8 for Word 2).
-class Scrabble
-{
-private:
-    Tile**      grid;           // Jagged array: grid[0] has 7 tiles, grid[1] has 8 tiles
-    int         rowLength[2];   // Length of each row (7, 8)
-    std::string targetWord[2];  // Solution words for Word 1 and Word 2
-    bool        targetsLoaded;  // Whether target words have been configured
-
-    friend class GameEngine;
-
-public:
-    // Default constructor: allocates empty jagged grid
-    Scrabble();
-
-    // Parameterized constructor: loads target solution words
-    Scrabble(const std::string& word1, const std::string& word2);
-
-    // Deep copy constructor
-    Scrabble(const Scrabble& other);
-
-    // Deep copy assignment operator
-    Scrabble& operator=(const Scrabble& other);
-
-    // Destructor releasing both jagged grid rows and row pointer array
-    ~Scrabble();
-
-    // Configures target solution words (must be 7 and 8 uppercase letters)
-    void loadTargetWords(const std::string& word1, const std::string& word2);
-
-    // Places a clue letter into the grid matching target letter and position
-    void placeLetter(const Clue& clue);
-
-    // Reveals letter at specified 1-based position or space if unfilled
-    char revealLetter(WordRow row, int position) const;
-
-    // Verification and state inspection
-    bool isRowComplete(WordRow row) const;
-    bool isComplete() const;
-    int  getRowLength(WordRow row) const;
-    int  getFilledCount(WordRow row) const;
-    std::string getRowString(WordRow row) const;
-    std::string getTargetWord(WordRow row) const;
-
-    // Verifies full row matches typed guess case-insensitively
-    void verifyWord(WordRow row, const std::string& typedWord) const;
-
-    // Renders the current state of both word rows
-    void display(std::ostream& out) const;
-};
-
-// Stream insertion operator for Scrabble
-std::ostream& operator<<(std::ostream& out, const Scrabble& scrabble);

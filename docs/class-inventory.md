@@ -1,6 +1,6 @@
 # Class Inventory — The Locker Heist
 **Binding architecture contract.  Names, visibilities, and relationships here govern every commit.**
-Last updated: Commit 4 (Samreen Kousar, 25F-0091).
+Last updated: Commit 5 (Alina Afzal, 25F-0042).
 
 ---
 
@@ -79,7 +79,7 @@ Character  [abstract; private: characterName, characterRole, nationality, isCulp
 │  static:       getLiveCount()
 │
 ├── Victim             [minCred: 80; overrides hasClue (true), getClue (Word2), display]
-├── Detective          [credibility, turns, dynamic string* solvedWords[2]; deep copy ctor & op=; Malay default; minCred: 0]
+├── Detective          [credibility, turns, dynamic string* solvedWords[2], composed TileRack locationRack (cap 7) & characterRack (cap 8); deep copy ctor & op=; Malay default; minCred: 0]
 └── Suspect            [abstract; public Character; private: letterClueChar, boardPosChar, clueRowChar; hasClue (true), getClue]
     ├── HouseHelp      [public Suspect; minCred: 0]
     │   ├── Cook       [public HouseHelp; minCred: 0]
@@ -97,17 +97,13 @@ Sole polymorphic construction hub based on role strings; throws `InvalidInputExc
 
 ---
 
-## Board and Container Classes — Implemented in Commit 4 (Module 4 & 5)
+## Board and Container Classes — Implemented in Commit 4 & 5 (Module 4 & 5)
 
 | Class | Kind | Fields & Methods | Notes |
 |-------|------|------------------|-------|
-| `TileRack` | Dynamic Container | `Tile* tiles; int* positions; int capacity; int count;` <br> `TileRack(int cap); ~TileRack(); TileRack(const TileRack&); TileRack& operator=(const TileRack&);` <br> `addTile(); removeTile(); removeLast(); markPlaced(); isPlaced(); hasPosition(); getCapacity(); getCount(); isEmpty(); isFull(); clear(); display(); friend operator<<;` | Parallel dynamic heap arrays allocated with `new[]` and freed with `delete[]`. Independent memory deep copy. Will be migrated to `DynamicArray<T>` in Commit 6. Friend of `GameEngine`. |
-| `Scrabble` | Dynamic Jagged Board | `Tile** grid; std::string targetWord1; std::string targetWord2;` <br> `Scrabble(); Scrabble(string w1, string w2); ~Scrabble(); Scrabble(const Scrabble&); Scrabble& operator=(const Scrabble&);` <br> `loadTargetWords(); placeLetter(); revealLetter(); verifyWord(); isRowComplete(); isComplete(); getRowLength(); getRowString(); display(); friend operator<<;` | Jagged 2D dynamic heap array (`grid[0]` size 7, `grid[1]` size 8). 1-based indexing for clue placement. Validates target letters, handles complete/incomplete rows, deep-copies grid state. |
-
-### Scheduled for Commit 5
-| Class | Kind | Responsibility |
-|-------|------|---------------|
-| `Cottage` | Dynamic Container | Array of `Location`; drawn as aggregation |
+| `TileRack` | Dynamic Container | `Tile* tiles; int* positions; int capacity; int count;` <br> `TileRack(int cap); ~TileRack(); TileRack(const TileRack&); TileRack& operator=(const TileRack&);` <br> `addTile(); removeTile(); removeLast(); markPlaced(); isPlaced(); hasPosition(); getCapacity(); getCount(); isEmpty(); isFull(); clear(); display(); friend operator<<;` | Parallel dynamic heap arrays allocated with `new[]` and freed with `delete[]`. Independent memory deep copy. Will be migrated to `DynamicArray<T>` in Commit 6. Friend of `GameEngine`. Implemented in C4. |
+| `Scrabble` | Dynamic Jagged Board | `Tile** grid; std::string targetWord1; std::string targetWord2;` <br> `Scrabble(); Scrabble(string w1, string w2); ~Scrabble(); Scrabble(const Scrabble&); Scrabble& operator=(const Scrabble&);` <br> `loadTargetWords(); placeLetter(); revealLetter(); verifyWord(); isRowComplete(); isComplete(); getRowLength(); getRowString(); display(); friend operator<<;` | Jagged 2D dynamic heap array (`grid[0]` size 7, `grid[1]` size 8). 1-based indexing for clue placement. Validates target letters, handles complete/incomplete rows, deep-copies grid state. Implemented in C4. |
+| `Cottage` | Dynamic Container | `Location** locations; int locationCount;` <br> `Cottage(); Cottage(const LocationRecord records[], int count, int culpritColumn); ~Cottage(); Cottage(const Cottage&); Cottage& operator=(const Cottage&);` <br> `getLocationCount(); isLocationSearched(num); searchLocation(num); getLocationClue(num); getLocationName(num); getSearchedCount(); allSearched(); displayLocations(); friend operator<<;` | Dynamic array of heap-allocated `Location*` instances using raw dynamic memory (`new Location*[count]`). Deep copy constructor and assignment operator. 1-based room indexing; validates bounds throwing `InvalidPositionException`. Aggregation relationship with `Location[]` (Decision R16). Implemented in C5. |
 
 ### Scheduled for Commit 6
 | Class | Kind | Responsibility |
@@ -139,7 +135,7 @@ Sole polymorphic construction hub based on role strings; throws `InvalidInputExc
 | Uses | DataLoader → GameException | Dependency |
 | Uses | Scrabble → Clue | Dependency |
 | Access | GameEngine ↔ Character | Friend |
-| Output | operator<< for Tile, Character, Location, TileRack, Scrabble | Friend function |
+| Output | operator<< for Tile, Character, Location, TileRack, Scrabble, Cottage | Friend function |
 | Pattern | GameEngine | Singleton |
 | Inheritance | PA | Diamond (BusinessRelations + CloseRelations, both virtual public Suspect) |
 
