@@ -127,3 +127,59 @@
   Result: 20 passed, 0 failed.
 ========================================
 
+
+========================================
+  ST-04  TileRack & Scrabble Self-Test
+========================================
+
+--- Part 1: TileRack Tests ---
+  [PASS] ST-04: TileRack constructor with capacity 0 throws InvalidInputException
+  [PASS] ST-04: TileRack is initially empty
+  [PASS] ST-04: TileRack is not full initially
+  [PASS] ST-04: TileRack count is 0 initially
+  [PASS] ST-04: TileRack::removeTile from empty rack throws RackEmptyException
+  [PASS] ST-04: TileRack::removeLast from empty rack throws RackEmptyException
+  [PASS] ST-04: TileRack isFull() true at capacity (3/3)
+  [PASS] ST-04: TileRack count is 3
+  [PASS] ST-04: TileRack::addTile beyond capacity throws RackFullException
+  [PASS] ST-04: TileRack::addTile with duplicate position throws SlotFilledException
+  [PASS] ST-04: TileRack::addTile with lowercase letter throws InvalidLetterException
+  [PASS] ST-04: Tile at position 1 initially not placed
+  [PASS] ST-04: Tile at position 1 isPlaced() true after markPlaced()
+  [PASS] ST-04: TileRack hasPosition(1) returns true
+  [PASS] ST-04: TileRack hasPosition(2) returns false
+  Sample TileRack display output: Rack: [A@1*] 
+  [PASS] ST-04: TileRack display() executed successfully
+  [PASS] ST-04: TileRack deep copy: original unchanged when copy is modified
+  [PASS] ST-04: TileRack copy constructor instance operates on independent memory
+  [PASS] ST-04: TileRack copy assignment instance operates on independent memory
+  [PASS] ST-04: TileRack self-assignment is safe and preserves data
+
+--- Part 2: Scrabble Board Tests ---
+  [PASS] ST-04: Scrabble::loadTargetWords with 6-letter Word 1 throws InvalidWordException
+  [PASS] ST-04: Scrabble Word 1 length is 7
+  [PASS] ST-04: Scrabble Word 2 length is 8
+  [PASS] ST-04: Scrabble position 0 throws InvalidPositionException
+  [PASS] ST-04: Scrabble position 8 on row 1 throws InvalidPositionException
+  [PASS] ST-04: Scrabble position 9 on row 2 throws InvalidPositionException
+  [PASS] ST-04: Scrabble position 8 on row 2 is valid and succeeds
+  [PASS] ST-04: Scrabble placing on already filled slot throws SlotFilledException
+  [PASS] ST-04: Scrabble placing incorrect letter throws InvalidLetterException
+  [PASS] ST-04: Scrabble verifyWord on incomplete row throws WordIncompleteException
+  [PASS] ST-04: Scrabble Word 1 is complete after placing 7 letters
+  [PASS] ST-04: Scrabble getRowString(Word 1) == 'PHARAOH'
+  [PASS] ST-04: Scrabble verifyWord with incorrect word throws InvalidWordException
+  [PASS] ST-04: Scrabble verifyWord accepts lowercase input ('pharaoh')
+  [PASS] ST-04: Scrabble Word 2 is complete after placing 8 letters
+  [PASS] ST-04: Scrabble isComplete() returns true when both rows are complete
+
+--- Sample Scrabble Board Display ---
+Word 1: [P] [H] [A] [R] [A] [O] [H] COMPLETE
+Word 2: [P] [Y] [R] [A] [M] [I] [D] [S] COMPLETE
+  [PASS] ST-04: Scrabble display() executed successfully
+  [PASS] ST-04: Scrabble deep copy: copies replicate complete board state
+  [PASS] ST-04: Scrabble deep copy: revealed letters match original across copies
+----------------------------------------
+  Result: 39 passed, 0 failed.
+========================================
+

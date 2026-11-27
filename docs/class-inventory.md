@@ -1,6 +1,6 @@
 # Class Inventory — The Locker Heist
 **Binding architecture contract.  Names, visibilities, and relationships here govern every commit.**
-Last updated: Commit 3 (Alina Afzal, 25F-0042).
+Last updated: Commit 4 (Samreen Kousar, 25F-0091).
 
 ---
 
@@ -97,15 +97,27 @@ Sole polymorphic construction hub based on role strings; throws `InvalidInputExc
 
 ---
 
-## Board and Container Classes
+## Board and Container Classes — Implemented in Commit 4 (Module 4 & 5)
 
-| Class | Commit | Responsibility |
-|-------|--------|---------------|
-| `TileRack` | C4 | Fixed-size array of `Tile`; owns tiles; operator<<; friend of GameEngine |
-| `Scrabble` | C4 | Two `TileRack` rows; owns `Clue` dependency; operator<< |
-| `Cottage` | C5 | Array of `Location`; drawn as aggregation |
-| `DynamicArray<T>` | C6 | Custom heap array template (no `<vector>`) |
-| `GameEngine` | C8 | Singleton; owns Detective, Cottage, Scrabble, combined-clue TileRack, 8 Character* |
+| Class | Kind | Fields & Methods | Notes |
+|-------|------|------------------|-------|
+| `TileRack` | Dynamic Container | `Tile* tiles; int* positions; int capacity; int count;` <br> `TileRack(int cap); ~TileRack(); TileRack(const TileRack&); TileRack& operator=(const TileRack&);` <br> `addTile(); removeTile(); removeLast(); markPlaced(); isPlaced(); hasPosition(); getCapacity(); getCount(); isEmpty(); isFull(); clear(); display(); friend operator<<;` | Parallel dynamic heap arrays allocated with `new[]` and freed with `delete[]`. Independent memory deep copy. Will be migrated to `DynamicArray<T>` in Commit 6. Friend of `GameEngine`. |
+| `Scrabble` | Dynamic Jagged Board | `Tile** grid; std::string targetWord1; std::string targetWord2;` <br> `Scrabble(); Scrabble(string w1, string w2); ~Scrabble(); Scrabble(const Scrabble&); Scrabble& operator=(const Scrabble&);` <br> `loadTargetWords(); placeLetter(); revealLetter(); verifyWord(); isRowComplete(); isComplete(); getRowLength(); getRowString(); display(); friend operator<<;` | Jagged 2D dynamic heap array (`grid[0]` size 7, `grid[1]` size 8). 1-based indexing for clue placement. Validates target letters, handles complete/incomplete rows, deep-copies grid state. |
+
+### Scheduled for Commit 5
+| Class | Kind | Responsibility |
+|-------|------|---------------|
+| `Cottage` | Dynamic Container | Array of `Location`; drawn as aggregation |
+
+### Scheduled for Commit 6
+| Class | Kind | Responsibility |
+|-------|------|---------------|
+| `DynamicArray<T>` | Template | Custom heap array template replacing raw arrays in `TileRack` (no `<vector>`) |
+
+### Scheduled for Commit 8
+| Class | Kind | Responsibility |
+|-------|------|---------------|
+| `GameEngine` | Singleton | Singleton; owns Detective, Cottage, Scrabble, combined-clue TileRack, 8 Character* |
 
 ---
 
@@ -127,7 +139,7 @@ Sole polymorphic construction hub based on role strings; throws `InvalidInputExc
 | Uses | DataLoader → GameException | Dependency |
 | Uses | Scrabble → Clue | Dependency |
 | Access | GameEngine ↔ Character | Friend |
-| Output | operator<< for Tile, Character, Location, Scrabble | Friend function |
+| Output | operator<< for Tile, Character, Location, TileRack, Scrabble | Friend function |
 | Pattern | GameEngine | Singleton |
 | Inheritance | PA | Diamond (BusinessRelations + CloseRelations, both virtual public Suspect) |
 

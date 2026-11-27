@@ -3,10 +3,10 @@
 // ============================================================
 // heist.h  --  THE LOCKER HEIST
 // All declarations: enums, structs, exceptions, utilities,
-// character hierarchy, and class templates live here and nowhere else.
-// Only heist.cpp and main.cpp include this file. Having a single header
-// keeps the entire architecture visible in one place and prevents
-// circular dependency issues across the project.
+// character hierarchy, board models, and class templates live
+// here and nowhere else. Only heist.cpp and main.cpp include
+// this file. Having a single header keeps the entire architecture
+// visible in one place and prevents circular dependency issues.
 // ============================================================
 
 // The header includes only what declarations themselves need.
@@ -16,7 +16,7 @@
 #include <string>     // std::string for textual data and messages
 
 
-// Forward declaration for GameEngine (friend class of Character)
+// Forward declaration for GameEngine (friend class across domain types)
 class GameEngine;
 
 
@@ -70,6 +70,9 @@ struct Tile
     bool filled     = false; // whether a valid letter has been placed
 };
 
+// Stream insertion operator for Tile
+std::ostream& operator<<(std::ostream& out, const Tile& tile);
+
 // Clue represents a single letter hint obtained via search or interview.
 struct Clue
 {
@@ -87,6 +90,9 @@ struct Location
     WordRow     locRow        = WordRow::Word1; // always Word1 for locations
     bool        locSearchFlag = false;          // true if already searched
 };
+
+// Stream insertion operator for Location
+std::ostream& operator<<(std::ostream& out, const Location& loc);
 
 
 // ============================================================
@@ -582,3 +588,124 @@ class CharacterFactory
 public:
     static Character* create(const CharacterRecord& record, int culpritColumn);
 };
+
+
+// ============================================================
+// SECTION 8 -- BOARD CLASSES (MODULE 4 & 5, COMMIT 4 RAW DMA)
+// Note: TileRack and Scrabble use raw dynamic memory allocation (new/delete)
+// in Commit 4. In Commit 6, this implementation will be adapted to
+// DynamicArray<T>. All comments here use single-line style (//)
+// to prevent nested comment syntax errors during future refactoring.
+// ============================================================
+
+// TileRack manages an inventory of collected clue letter tiles.
+// Parallel dynamic arrays store Tile objects and their target word positions.
+class TileRack
+{
+private:
+    Tile* tiles;      // Dynamic array of Tile instances
+    int*  positions;  // Parallel dynamic array of 1-based board positions
+    int   capacity;   // Allocated capacity of the rack
+    int   count;      // Current number of tiles in the rack
+
+    friend class GameEngine;
+
+public:
+    // Constructs a rack with the specified capacity (minimum 1)
+    explicit TileRack(int capacity = 8);
+
+    // Deep copy constructor
+    TileRack(const TileRack& other);
+
+    // Deep copy assignment operator
+    TileRack& operator=(const TileRack& other);
+
+    // Destructor releasing dynamic memory
+    ~TileRack();
+
+    // Adds a clue tile; throws if full, letter invalid, position < 1, or duplicate position
+    void addTile(const Clue& clue);
+
+    // Removes tile at index, shifting remaining tiles left
+    void removeTile(int index);
+
+    // Removes the most recently added tile
+    void removeLast();
+
+    // Clears all tiles from the rack
+    void clear();
+
+    // Accessors
+    int  getCount() const;
+    int  getCapacity() const;
+    bool isFull() const;
+    bool isEmpty() const;
+
+    char getLetterAt(int index) const;
+    int  getPositionAt(int index) const;
+    bool hasPosition(int position) const;
+
+    // Status tracking for placed tiles
+    void markPlaced(int position);
+    bool isPlaced(int position) const;
+
+    // Renders rack contents to the output stream
+    void display(std::ostream& out) const;
+};
+
+// Stream insertion operator for TileRack
+std::ostream& operator<<(std::ostream& out, const TileRack& rack);
+
+// Scrabble board manages the 2-row jagged crossword grid (7 letters for Word 1, 8 for Word 2).
+class Scrabble
+{
+private:
+    Tile**      grid;           // Jagged array: grid[0] has 7 tiles, grid[1] has 8 tiles
+    int         rowLength[2];   // Length of each row (7, 8)
+    std::string targetWord[2];  // Solution words for Word 1 and Word 2
+    bool        targetsLoaded;  // Whether target words have been configured
+
+    friend class GameEngine;
+
+public:
+    // Default constructor: allocates empty jagged grid
+    Scrabble();
+
+    // Parameterized constructor: loads target solution words
+    Scrabble(const std::string& word1, const std::string& word2);
+
+    // Deep copy constructor
+    Scrabble(const Scrabble& other);
+
+    // Deep copy assignment operator
+    Scrabble& operator=(const Scrabble& other);
+
+    // Destructor releasing both jagged grid rows and row pointer array
+    ~Scrabble();
+
+    // Configures target solution words (must be 7 and 8 uppercase letters)
+    void loadTargetWords(const std::string& word1, const std::string& word2);
+
+    // Places a clue letter into the grid matching target letter and position
+    void placeLetter(const Clue& clue);
+
+    // Reveals letter at specified 1-based position or space if unfilled
+    char revealLetter(WordRow row, int position) const;
+
+    // Verification and state inspection
+    bool isRowComplete(WordRow row) const;
+    bool isComplete() const;
+    int  getRowLength(WordRow row) const;
+    int  getFilledCount(WordRow row) const;
+    std::string getRowString(WordRow row) const;
+    std::string getTargetWord(WordRow row) const;
+
+    // Verifies full row matches typed guess case-insensitively
+    void verifyWord(WordRow row, const std::string& typedWord) const;
+
+    // Renders the current state of both word rows
+    void display(std::ostream& out) const;
+};
+
+// Stream insertion operator for Scrabble
+std::ostream& operator<<(std::ostream& out, const Scrabble& scrabble);

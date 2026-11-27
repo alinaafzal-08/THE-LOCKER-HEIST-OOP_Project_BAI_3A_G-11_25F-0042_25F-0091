@@ -60,8 +60,8 @@ This script:
 ```powershell
 # From inside the TheLockerHeist folder:
 cd TheLockerHeist
-..\x64\Debug\heist.exe             # loads and verifies all data files (Commit 2 & 3)
-..\x64\Debug\heist.exe --selftest  # executes ST-01, ST-02, and ST-03 self-tests
+..\x64\Debug\heist.exe             # loads and verifies all data files (Commit 2, 3, & 4)
+..\x64\Debug\heist.exe --selftest  # executes ST-01, ST-02, ST-03, and ST-04 self-tests
 ```
 
 ---
@@ -136,6 +136,7 @@ generated code. The team is fully responsible for the final submission.
 | **ST-01** | Module 1 Foundation Types (Tile, Clue, Location, WordRow, GameState, MenuChoice) | 27 / 27 PASS |
 | **ST-02** | Module 6 & 7 (GameException family, StringUtils, DataLoader, Corruption Detection) | 40 / 40 PASS |
 | **ST-03** | Module 3 & 9 (Character hierarchy, Diamond inheritance, Factory, Deep Copy, Virtual Destructors) | 20 / 20 PASS |
+| **ST-04** | Module 4 & 5 (TileRack parallel arrays, Scrabble jagged 2D array, Raw DMA, Deep Copy, Bounds, Exceptions) | 39 / 39 PASS |
 
 ---
 

@@ -6,6 +6,7 @@
 //   - StringUtils static methods
 //   - DataLoader file loaders and consistency validator
 //   - Character hierarchy and CharacterFactory
+//   - Board classes (TileRack and Scrabble using raw DMA)
 // ============================================================
 
 #include "heist.h"
@@ -1527,4 +1528,523 @@ Character* CharacterFactory::create(const CharacterRecord& record, int culpritCo
     {
         throw InvalidInputException("Unknown character role: " + record.role);
     }
+}
+
+
+// ============================================================
+// SECTION 6 -- BOARD CLASSES IMPLEMENTATIONS (Commit 4 Raw DMA)
+// All comments in this section use single-line style (//) to avoid
+// nested block comment syntax issues when refactoring in Commit 6.
+// ============================================================
+
+// Stream insertion operators
+std::ostream& operator<<(std::ostream& out, const Tile& tile)
+{
+    out << "[" << tile.tileLetter << "]";
+    return out;
+}
+
+std::ostream& operator<<(std::ostream& out, const Location& loc)
+{
+    out << loc.locName << " (Pos: " << loc.boardPosLoc << ", Letter: " << loc.letterClueLoc << ")";
+    return out;
+}
+
+std::ostream& operator<<(std::ostream& out, const TileRack& rack)
+{
+    rack.display(out);
+    return out;
+}
+
+std::ostream& operator<<(std::ostream& out, const Scrabble& scrabble)
+{
+    scrabble.display(out);
+    return out;
+}
+
+// TileRack Implementation using raw dynamic memory
+TileRack::TileRack(int cap)
+    : capacity(cap), count(0)
+{
+    if (capacity < 1)
+    {
+        throw InvalidInputException("TileRack capacity must be at least 1; requested: " +
+                                    StringUtils::intToString(cap));
+    }
+    tiles = new Tile[capacity];
+    positions = new int[capacity];
+    for (int i = 0; i < capacity; ++i)
+    {
+        tiles[i] = Tile{};
+        positions[i] = 0;
+    }
+}
+
+TileRack::TileRack(const TileRack& other)
+    : capacity(other.capacity), count(other.count)
+{
+    tiles = new Tile[capacity];
+    positions = new int[capacity];
+    for (int i = 0; i < capacity; ++i)
+    {
+        tiles[i] = other.tiles[i];
+        positions[i] = other.positions[i];
+    }
+}
+
+TileRack& TileRack::operator=(const TileRack& other)
+{
+    if (this != &other)
+    {
+        delete[] tiles;
+        delete[] positions;
+
+        capacity  = other.capacity;
+        count     = other.count;
+        tiles     = new Tile[capacity];
+        positions = new int[capacity];
+        for (int i = 0; i < capacity; ++i)
+        {
+            tiles[i] = other.tiles[i];
+            positions[i] = other.positions[i];
+        }
+    }
+    return *this;
+}
+
+TileRack::~TileRack()
+{
+    delete[] tiles;
+    delete[] positions;
+    tiles = nullptr;
+    positions = nullptr;
+}
+
+void TileRack::addTile(const Clue& clue)
+{
+    if (isFull())
+    {
+        throw RackFullException(capacity);
+    }
+    if (clue.clueLetter < 'A' || clue.clueLetter > 'Z')
+    {
+        throw InvalidLetterException(clue.clueLetter, clue.cluePosition);
+    }
+    if (clue.cluePosition < 1)
+    {
+        throw InvalidPositionException(clue.cluePosition, 8);
+    }
+    if (hasPosition(clue.cluePosition))
+    {
+        throw SlotFilledException(clue.cluePosition);
+    }
+
+    tiles[count].tileLetter = clue.clueLetter;
+    tiles[count].filled     = false;
+    positions[count]        = clue.cluePosition;
+    ++count;
+}
+
+void TileRack::removeTile(int index)
+{
+    if (isEmpty())
+    {
+        throw RackEmptyException();
+    }
+    if (index < 0 || index >= count)
+    {
+        throw InvalidPositionException(index, count - 1);
+    }
+
+    for (int i = index; i < count - 1; ++i)
+    {
+        tiles[i]     = tiles[i + 1];
+        positions[i] = positions[i + 1];
+    }
+    --count;
+    tiles[count]     = Tile{};
+    positions[count] = 0;
+}
+
+void TileRack::removeLast()
+{
+    if (isEmpty())
+    {
+        throw RackEmptyException();
+    }
+    removeTile(count - 1);
+}
+
+void TileRack::clear()
+{
+    count = 0;
+    for (int i = 0; i < capacity; ++i)
+    {
+        tiles[i] = Tile{};
+        positions[i] = 0;
+    }
+}
+
+int TileRack::getCount() const
+{
+    return count;
+}
+
+int TileRack::getCapacity() const
+{
+    return capacity;
+}
+
+bool TileRack::isFull() const
+{
+    return count >= capacity;
+}
+
+bool TileRack::isEmpty() const
+{
+    return count == 0;
+}
+
+char TileRack::getLetterAt(int index) const
+{
+    if (index < 0 || index >= count)
+    {
+        throw InvalidPositionException(index, count - 1);
+    }
+    return tiles[index].tileLetter;
+}
+
+int TileRack::getPositionAt(int index) const
+{
+    if (index < 0 || index >= count)
+    {
+        throw InvalidPositionException(index, count - 1);
+    }
+    return positions[index];
+}
+
+bool TileRack::hasPosition(int position) const
+{
+    for (int i = 0; i < count; ++i)
+    {
+        if (positions[i] == position)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void TileRack::markPlaced(int position)
+{
+    for (int i = 0; i < count; ++i)
+    {
+        if (positions[i] == position)
+        {
+            tiles[i].filled = true;
+            return;
+        }
+    }
+    throw InvalidPositionException(position, 8);
+}
+
+bool TileRack::isPlaced(int position) const
+{
+    for (int i = 0; i < count; ++i)
+    {
+        if (positions[i] == position)
+        {
+            return tiles[i].filled;
+        }
+    }
+    return false;
+}
+
+void TileRack::display(std::ostream& out) const
+{
+    if (isEmpty())
+    {
+        out << "Rack: (empty)";
+        return;
+    }
+    out << "Rack: ";
+    for (int i = 0; i < count; ++i)
+    {
+        out << "[" << tiles[i].tileLetter << "@" << positions[i];
+        if (tiles[i].filled)
+        {
+            out << "*";
+        }
+        out << "] ";
+    }
+}
+
+// Scrabble Jagged Board Implementation using raw dynamic memory
+Scrabble::Scrabble()
+    : targetsLoaded(false)
+{
+    rowLength[0] = 7;
+    rowLength[1] = 8;
+    targetWord[0] = "";
+    targetWord[1] = "";
+
+    grid = new Tile*[2];
+    grid[0] = new Tile[7];
+    grid[1] = new Tile[8];
+}
+
+Scrabble::Scrabble(const std::string& word1, const std::string& word2)
+    : targetsLoaded(false)
+{
+    rowLength[0] = 7;
+    rowLength[1] = 8;
+    targetWord[0] = "";
+    targetWord[1] = "";
+
+    grid = new Tile*[2];
+    grid[0] = new Tile[7];
+    grid[1] = new Tile[8];
+
+    loadTargetWords(word1, word2);
+}
+
+Scrabble::Scrabble(const Scrabble& other)
+    : targetsLoaded(other.targetsLoaded)
+{
+    rowLength[0]  = other.rowLength[0];
+    rowLength[1]  = other.rowLength[1];
+    targetWord[0] = other.targetWord[0];
+    targetWord[1] = other.targetWord[1];
+
+    grid = new Tile*[2];
+    grid[0] = new Tile[rowLength[0]];
+    grid[1] = new Tile[rowLength[1]];
+
+    for (int i = 0; i < rowLength[0]; ++i)
+    {
+        grid[0][i] = other.grid[0][i];
+    }
+    for (int i = 0; i < rowLength[1]; ++i)
+    {
+        grid[1][i] = other.grid[1][i];
+    }
+}
+
+Scrabble& Scrabble::operator=(const Scrabble& other)
+{
+    if (this != &other)
+    {
+        delete[] grid[0];
+        delete[] grid[1];
+        delete[] grid;
+
+        rowLength[0]  = other.rowLength[0];
+        rowLength[1]  = other.rowLength[1];
+        targetWord[0] = other.targetWord[0];
+        targetWord[1] = other.targetWord[1];
+        targetsLoaded = other.targetsLoaded;
+
+        grid = new Tile*[2];
+        grid[0] = new Tile[rowLength[0]];
+        grid[1] = new Tile[rowLength[1]];
+
+        for (int i = 0; i < rowLength[0]; ++i)
+        {
+            grid[0][i] = other.grid[0][i];
+        }
+        for (int i = 0; i < rowLength[1]; ++i)
+        {
+            grid[1][i] = other.grid[1][i];
+        }
+    }
+    return *this;
+}
+
+Scrabble::~Scrabble()
+{
+    delete[] grid[0];
+    delete[] grid[1];
+    delete[] grid;
+    grid = nullptr;
+}
+
+void Scrabble::loadTargetWords(const std::string& word1, const std::string& word2)
+{
+    if (word1.length() != 7 || !StringUtils::isAllLetters(word1))
+    {
+        throw InvalidWordException("Word 1 must be 7 uppercase letters: " + word1);
+    }
+    for (size_t i = 0; i < word1.length(); ++i)
+    {
+        if (word1[i] < 'A' || word1[i] > 'Z')
+        {
+            throw InvalidWordException("Word 1 contains non-uppercase letter: " + word1);
+        }
+    }
+
+    if (word2.length() != 8 || !StringUtils::isAllLetters(word2))
+    {
+        throw InvalidWordException("Word 2 must be 8 uppercase letters: " + word2);
+    }
+    for (size_t i = 0; i < word2.length(); ++i)
+    {
+        if (word2[i] < 'A' || word2[i] > 'Z')
+        {
+            throw InvalidWordException("Word 2 contains non-uppercase letter: " + word2);
+        }
+    }
+
+    targetWord[0] = word1;
+    targetWord[1] = word2;
+    targetsLoaded = true;
+}
+
+void Scrabble::placeLetter(const Clue& clue)
+{
+    if (!targetsLoaded)
+    {
+        throw InvalidWordException("Target words are not loaded on Scrabble board");
+    }
+
+    int r = static_cast<int>(clue.clueRow);
+    if (r < 0 || r > 1)
+    {
+        throw InvalidPositionException(r, 1);
+    }
+
+    if (clue.cluePosition < 1 || clue.cluePosition > rowLength[r])
+    {
+        throw InvalidPositionException(clue.cluePosition, rowLength[r]);
+    }
+
+    int idx = clue.cluePosition - 1;
+    if (grid[r][idx].filled)
+    {
+        throw SlotFilledException(clue.cluePosition);
+    }
+
+    if (clue.clueLetter != targetWord[r][idx])
+    {
+        throw InvalidLetterException(clue.clueLetter, clue.cluePosition);
+    }
+
+    grid[r][idx].tileLetter = clue.clueLetter;
+    grid[r][idx].filled     = true;
+}
+
+char Scrabble::revealLetter(WordRow row, int position) const
+{
+    int r = static_cast<int>(row);
+    if (position < 1 || position > rowLength[r])
+    {
+        throw InvalidPositionException(position, rowLength[r]);
+    }
+
+    int idx = position - 1;
+    return grid[r][idx].filled ? grid[r][idx].tileLetter : ' ';
+}
+
+bool Scrabble::isRowComplete(WordRow row) const
+{
+    int r = static_cast<int>(row);
+    for (int i = 0; i < rowLength[r]; ++i)
+    {
+        if (!grid[r][i].filled)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool Scrabble::isComplete() const
+{
+    return isRowComplete(WordRow::Word1) && isRowComplete(WordRow::Word2);
+}
+
+int Scrabble::getRowLength(WordRow row) const
+{
+    return rowLength[static_cast<int>(row)];
+}
+
+int Scrabble::getFilledCount(WordRow row) const
+{
+    int r = static_cast<int>(row);
+    int filledCount = 0;
+    for (int i = 0; i < rowLength[r]; ++i)
+    {
+        if (grid[r][i].filled)
+        {
+            ++filledCount;
+        }
+    }
+    return filledCount;
+}
+
+std::string Scrabble::getRowString(WordRow row) const
+{
+    int r = static_cast<int>(row);
+    std::string s = "";
+    for (int i = 0; i < rowLength[r]; ++i)
+    {
+        s += (grid[r][i].filled ? grid[r][i].tileLetter : '_');
+    }
+    return s;
+}
+
+std::string Scrabble::getTargetWord(WordRow row) const
+{
+    return targetWord[static_cast<int>(row)];
+}
+
+void Scrabble::verifyWord(WordRow row, const std::string& typedWord) const
+{
+    int r = static_cast<int>(row);
+    if (!isRowComplete(row))
+    {
+        throw WordIncompleteException(r == 0 ? "Word 1" : "Word 2");
+    }
+
+    if (!StringUtils::equalsIgnoreCase(typedWord, targetWord[r]))
+    {
+        throw InvalidWordException(typedWord);
+    }
+}
+
+void Scrabble::display(std::ostream& out) const
+{
+    out << "Word 1: ";
+    for (int i = 0; i < rowLength[0]; ++i)
+    {
+        if (grid[0][i].filled)
+        {
+            out << "[" << grid[0][i].tileLetter << "] ";
+        }
+        else
+        {
+            out << "[ ] ";
+        }
+    }
+    if (isRowComplete(WordRow::Word1))
+    {
+        out << "COMPLETE";
+    }
+
+    out << "\nWord 2: ";
+    for (int i = 0; i < rowLength[1]; ++i)
+    {
+        if (grid[1][i].filled)
+        {
+            out << "[" << grid[1][i].tileLetter << "] ";
+        }
+        else
+        {
+            out << "[ ] ";
+        }
+    }
+    if (isRowComplete(WordRow::Word2))
+    {
+        out << "COMPLETE";
+    }
+    out << "\n";
 }

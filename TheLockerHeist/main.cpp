@@ -1,13 +1,14 @@
 // ============================================================
 // main.cpp  --  THE LOCKER HEIST
-// Driver and self-test harness for Commit 3.
+// Driver and self-test harness for Commit 4.
 //
 // Operating modes:
 //   heist.exe             -- Verifies data files via DataLoader and displays
 //                            the banner with "Data files verified: OK".
 //   heist.exe --selftest  -- Executes ST-01 (foundation tests),
 //                            ST-02 (exceptions, StringUtils, DataLoader),
-//                            and ST-03 (character hierarchy, diamond, factory).
+//                            ST-03 (character hierarchy, diamond, factory),
+//                            and ST-04 (TileRack & Scrabble board DMA).
 //                            Exits with 0 if all tests pass, 1 if any fail.
 // ============================================================
 
@@ -738,6 +739,264 @@ static int runCharacterHierarchySelfTest()
 }
 
 // ------------------------------------------------------------
+// runBoardClassesSelfTest()  --  ST-04 (Commit 4)
+// Tests:
+//   1. TileRack capacity, full/empty detection, RackFull & RackEmpty
+//   2. TileRack duplicate positions, lowercase check, indexing
+//   3. TileRack markPlaced, isPlaced, and display output
+//   4. TileRack deep copy constructor, deep copy assignment, self-assignment
+//   5. Scrabble target word validation (6-letter word throws)
+//   6. Scrabble bounds checks: position 0, 8 on Word 1, 9 on Word 2
+//   7. Scrabble placement: wrong letter, duplicate slot
+//   8. Scrabble verifyWord on incomplete row, wrong word, correct lowercase
+//   9. Scrabble PA full word placement (PHARAOH & PYRAMIDS), isComplete
+//  10. Scrabble deep copy independence and display rendering
+// ------------------------------------------------------------
+static int runBoardClassesSelfTest()
+{
+    int passed = 0;
+    int failed = 0;
+
+    std::cout << "\n========================================\n";
+    std::cout << "  ST-04  TileRack & Scrabble Self-Test\n";
+    std::cout << "========================================\n";
+
+    // --------------------------------------------------------
+    // Part 1: TileRack tests
+    // --------------------------------------------------------
+    std::cout << "\n--- Part 1: TileRack Tests ---\n";
+
+    // Capacity validation (< 1 throws)
+    {
+        bool threwCap0 = false;
+        try { TileRack badRack(0); }
+        catch (const InvalidInputException&) { threwCap0 = true; }
+        check(threwCap0, "ST-04: TileRack constructor with capacity 0 throws InvalidInputException", passed, failed);
+    }
+
+    // Remove from empty rack
+    {
+        TileRack rack(3);
+        check(rack.isEmpty(), "ST-04: TileRack is initially empty", passed, failed);
+        check(!rack.isFull(), "ST-04: TileRack is not full initially", passed, failed);
+        check(rack.getCount() == 0, "ST-04: TileRack count is 0 initially", passed, failed);
+
+        bool threwEmpty = false;
+        try { rack.removeTile(0); }
+        catch (const RackEmptyException&) { threwEmpty = true; }
+        check(threwEmpty, "ST-04: TileRack::removeTile from empty rack throws RackEmptyException", passed, failed);
+
+        bool threwLastEmpty = false;
+        try { rack.removeLast(); }
+        catch (const RackEmptyException&) { threwLastEmpty = true; }
+        check(threwLastEmpty, "ST-04: TileRack::removeLast from empty rack throws RackEmptyException", passed, failed);
+
+        // Add tiles up to capacity
+        Clue c1{'A', 1, WordRow::Word1};
+        Clue c2{'B', 2, WordRow::Word1};
+        Clue c3{'C', 3, WordRow::Word1};
+        rack.addTile(c1);
+        rack.addTile(c2);
+        rack.addTile(c3);
+
+        check(rack.isFull(), "ST-04: TileRack isFull() true at capacity (3/3)", passed, failed);
+        check(rack.getCount() == 3, "ST-04: TileRack count is 3", passed, failed);
+
+        // Add beyond capacity throws RackFullException
+        bool threwFull = false;
+        try { Clue c4{'D', 4, WordRow::Word1}; rack.addTile(c4); }
+        catch (const RackFullException&) { threwFull = true; }
+        check(threwFull, "ST-04: TileRack::addTile beyond capacity throws RackFullException", passed, failed);
+    }
+
+    // Duplicate position, lowercase letter, markPlaced, isPlaced
+    {
+        TileRack rack(5);
+        Clue c1{'A', 1, WordRow::Word1};
+        rack.addTile(c1);
+
+        // Duplicate position throws SlotFilledException
+        bool threwDupPos = false;
+        try { Clue dup{'Z', 1, WordRow::Word1}; rack.addTile(dup); }
+        catch (const SlotFilledException&) { threwDupPos = true; }
+        check(threwDupPos, "ST-04: TileRack::addTile with duplicate position throws SlotFilledException", passed, failed);
+
+        // Lowercase letter throws InvalidLetterException
+        bool threwLower = false;
+        try { Clue lower{'b', 2, WordRow::Word1}; rack.addTile(lower); }
+        catch (const InvalidLetterException&) { threwLower = true; }
+        check(threwLower, "ST-04: TileRack::addTile with lowercase letter throws InvalidLetterException", passed, failed);
+
+        // markPlaced and isPlaced
+        check(!rack.isPlaced(1), "ST-04: Tile at position 1 initially not placed", passed, failed);
+        rack.markPlaced(1);
+        check(rack.isPlaced(1), "ST-04: Tile at position 1 isPlaced() true after markPlaced()", passed, failed);
+        check(rack.hasPosition(1), "ST-04: TileRack hasPosition(1) returns true", passed, failed);
+        check(!rack.hasPosition(2), "ST-04: TileRack hasPosition(2) returns false", passed, failed);
+
+        // Display check
+        std::cout << "  Sample TileRack display output: ";
+        rack.display(std::cout);
+        std::cout << "\n";
+        check(true, "ST-04: TileRack display() executed successfully", passed, failed);
+    }
+
+    // Deep copy independence & self-assignment
+    {
+        TileRack orig(4);
+        orig.addTile(Clue{'X', 1, WordRow::Word1});
+        orig.addTile(Clue{'Y', 2, WordRow::Word1});
+
+        TileRack copyRack = orig; // Copy constructor
+        TileRack assignRack(2);
+        assignRack = orig;        // Assignment operator
+
+        copyRack.addTile(Clue{'Z', 3, WordRow::Word1});
+        assignRack.removeLast();
+
+        check(orig.getCount() == 2 && orig.getLetterAt(0) == 'X' && orig.getLetterAt(1) == 'Y',
+              "ST-04: TileRack deep copy: original unchanged when copy is modified", passed, failed);
+        check(copyRack.getCount() == 3 && copyRack.getLetterAt(2) == 'Z',
+              "ST-04: TileRack copy constructor instance operates on independent memory", passed, failed);
+        check(assignRack.getCount() == 1 && assignRack.getLetterAt(0) == 'X',
+              "ST-04: TileRack copy assignment instance operates on independent memory", passed, failed);
+
+        // Self assignment
+        orig = orig;
+        check(orig.getCount() == 2 && orig.getLetterAt(0) == 'X' && orig.getLetterAt(1) == 'Y',
+              "ST-04: TileRack self-assignment is safe and preserves data", passed, failed);
+    }
+
+    // --------------------------------------------------------
+    // Part 2: Scrabble board tests
+    // --------------------------------------------------------
+    std::cout << "\n--- Part 2: Scrabble Board Tests ---\n";
+
+    // Target word validation (6-letter word throws InvalidWordException)
+    {
+        Scrabble sInvalid;
+        bool threw6 = false;
+        try { sInvalid.loadTargetWords("PHARAO", "PYRAMIDS"); } // 6 letters on Word 1
+        catch (const InvalidWordException&) { threw6 = true; }
+        check(threw6, "ST-04: Scrabble::loadTargetWords with 6-letter Word 1 throws InvalidWordException", passed, failed);
+    }
+
+    // PA target words: PHARAOH (7) and PYRAMIDS (8)
+    {
+        Scrabble sPA("PHARAOH", "PYRAMIDS");
+        check(sPA.getRowLength(WordRow::Word1) == 7, "ST-04: Scrabble Word 1 length is 7", passed, failed);
+        check(sPA.getRowLength(WordRow::Word2) == 8, "ST-04: Scrabble Word 2 length is 8", passed, failed);
+
+        // Position 0 on row 1 throws InvalidPositionException
+        bool threwPos0 = false;
+        try { sPA.placeLetter(Clue{'P', 0, WordRow::Word1}); }
+        catch (const InvalidPositionException&) { threwPos0 = true; }
+        check(threwPos0, "ST-04: Scrabble position 0 throws InvalidPositionException", passed, failed);
+
+        // Position 8 on row 1 throws InvalidPositionException
+        bool threwPos8Row1 = false;
+        try { sPA.placeLetter(Clue{'P', 8, WordRow::Word1}); }
+        catch (const InvalidPositionException&) { threwPos8Row1 = true; }
+        check(threwPos8Row1, "ST-04: Scrabble position 8 on row 1 throws InvalidPositionException", passed, failed);
+
+        // Position 9 on row 2 throws InvalidPositionException
+        bool threwPos9Row2 = false;
+        try { sPA.placeLetter(Clue{'S', 9, WordRow::Word2}); }
+        catch (const InvalidPositionException&) { threwPos9Row2 = true; }
+        check(threwPos9Row2, "ST-04: Scrabble position 9 on row 2 throws InvalidPositionException", passed, failed);
+
+        // Position 8 on row 2 is valid!
+        bool threwPos8Row2 = false;
+        try { sPA.placeLetter(Clue{'S', 8, WordRow::Word2}); }
+        catch (const InvalidPositionException&) { threwPos8Row2 = true; }
+        check(!threwPos8Row2, "ST-04: Scrabble position 8 on row 2 is valid and succeeds", passed, failed);
+
+        // Placing on already filled position throws SlotFilledException
+        bool threwTwice = false;
+        try { sPA.placeLetter(Clue{'S', 8, WordRow::Word2}); }
+        catch (const SlotFilledException&) { threwTwice = true; }
+        check(threwTwice, "ST-04: Scrabble placing on already filled slot throws SlotFilledException", passed, failed);
+
+        // Wrong letter throws InvalidLetterException
+        bool threwWrongLetter = false;
+        try { sPA.placeLetter(Clue{'Z', 1, WordRow::Word1}); } // target is 'P'
+        catch (const InvalidLetterException&) { threwWrongLetter = true; }
+        check(threwWrongLetter, "ST-04: Scrabble placing incorrect letter throws InvalidLetterException", passed, failed);
+
+        // verifyWord on incomplete row throws WordIncompleteException
+        bool threwIncomplete = false;
+        try { sPA.verifyWord(WordRow::Word1, "PHARAOH"); }
+        catch (const WordIncompleteException&) { threwIncomplete = true; }
+        check(threwIncomplete, "ST-04: Scrabble verifyWord on incomplete row throws WordIncompleteException", passed, failed);
+
+        // Place all letters of Word 1: P, H, A, R, A, O, H
+        sPA.placeLetter(Clue{'P', 1, WordRow::Word1});
+        sPA.placeLetter(Clue{'H', 2, WordRow::Word1});
+        sPA.placeLetter(Clue{'A', 3, WordRow::Word1});
+        sPA.placeLetter(Clue{'R', 4, WordRow::Word1});
+        sPA.placeLetter(Clue{'A', 5, WordRow::Word1});
+        sPA.placeLetter(Clue{'O', 6, WordRow::Word1});
+        sPA.placeLetter(Clue{'H', 7, WordRow::Word1});
+
+        check(sPA.isRowComplete(WordRow::Word1), "ST-04: Scrabble Word 1 is complete after placing 7 letters", passed, failed);
+        check(sPA.getRowString(WordRow::Word1) == "PHARAOH", "ST-04: Scrabble getRowString(Word 1) == 'PHARAOH'", passed, failed);
+
+        // verifyWord with incorrect word throws InvalidWordException
+        bool threwWrongWord = false;
+        try { sPA.verifyWord(WordRow::Word1, "PIRATES"); }
+        catch (const InvalidWordException&) { threwWrongWord = true; }
+        check(threwWrongWord, "ST-04: Scrabble verifyWord with incorrect word throws InvalidWordException", passed, failed);
+
+        // verifyWord with correct word in lowercase succeeds
+        bool verifiedLower = false;
+        try
+        {
+            sPA.verifyWord(WordRow::Word1, "pharaoh");
+            verifiedLower = true;
+        }
+        catch (...)
+        {
+            verifiedLower = false;
+        }
+        check(verifiedLower, "ST-04: Scrabble verifyWord accepts lowercase input ('pharaoh')", passed, failed);
+
+        // Place remaining letters of Word 2: P, Y, R, A, M, I, D (S@8 already placed)
+        sPA.placeLetter(Clue{'P', 1, WordRow::Word2});
+        sPA.placeLetter(Clue{'Y', 2, WordRow::Word2});
+        sPA.placeLetter(Clue{'R', 3, WordRow::Word2});
+        sPA.placeLetter(Clue{'A', 4, WordRow::Word2});
+        sPA.placeLetter(Clue{'M', 5, WordRow::Word2});
+        sPA.placeLetter(Clue{'I', 6, WordRow::Word2});
+        sPA.placeLetter(Clue{'D', 7, WordRow::Word2});
+
+        check(sPA.isRowComplete(WordRow::Word2), "ST-04: Scrabble Word 2 is complete after placing 8 letters", passed, failed);
+        check(sPA.isComplete(), "ST-04: Scrabble isComplete() returns true when both rows are complete", passed, failed);
+
+        // Scrabble display check
+        std::cout << "\n--- Sample Scrabble Board Display ---\n";
+        sPA.display(std::cout);
+        check(true, "ST-04: Scrabble display() executed successfully", passed, failed);
+
+        // Scrabble deep copy independence
+        Scrabble sCopy = sPA;
+        Scrabble sAssign;
+        sAssign = sPA;
+
+        check(sCopy.isComplete() && sAssign.isComplete(),
+              "ST-04: Scrabble deep copy: copies replicate complete board state", passed, failed);
+        check(sCopy.revealLetter(WordRow::Word1, 1) == 'P' &&
+              sAssign.revealLetter(WordRow::Word2, 8) == 'S',
+              "ST-04: Scrabble deep copy: revealed letters match original across copies", passed, failed);
+    }
+
+    std::cout << "----------------------------------------\n";
+    std::cout << "  Result: " << passed << " passed, " << failed << " failed.\n";
+    std::cout << "========================================\n\n";
+
+    return failed;
+}
+
+// ------------------------------------------------------------
 // main()
 // ------------------------------------------------------------
 int main(int argc, char* argv[])
@@ -749,6 +1008,7 @@ int main(int argc, char* argv[])
         totalFailures += runFoundationSelfTest();
         totalFailures += runDataLoaderSelfTest();
         totalFailures += runCharacterHierarchySelfTest();
+        totalFailures += runBoardClassesSelfTest();
         return (totalFailures > 0) ? 1 : 0;
     }
 
