@@ -139,6 +139,7 @@ generated code. The team is fully responsible for the final submission.
 | **ST-04** | Module 4 & 5 (TileRack parallel arrays, Scrabble jagged 2D array, Raw DMA, Deep Copy, Bounds, Exceptions) | 39 / 39 PASS |
 | **ST-05** | Module 4 & 5 (Cottage raw DMA array of pointers, Detective composed racks, Word 1 search & verification) | 34 / 34 PASS |
 | **ST-06** | Module 8 (DynamicArray<T> generic container, auto-doubling, deep copy, refactored TileRack/Scrabble/Cottage) | 29 / 29 PASS |
+| **ST-07** | Module 6 & 11 (ScoreBoard persistence & ASCII table, equality operators, TileRack::operator+ with selection sort & clue text, friend stream operators) | 36 / 36 PASS |
 
 ---
 

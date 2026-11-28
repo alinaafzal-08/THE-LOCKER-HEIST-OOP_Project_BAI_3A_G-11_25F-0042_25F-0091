@@ -986,6 +986,342 @@ void DataLoader::validateConsistency(const ClueProfile profiles[],
 
 
 // ============================================================
+// SECTION 6B -- SCOREBOARD IMPLEMENTATION (Commit 7, Module 6)
+// Manages persistent match results in leader/scoreBoard.txt.
+// GameEngine is ASSOCIATED with ScoreBoard (the engine holds a pointer to it,
+// while main() owns the lifetime of the ScoreBoard instance).
+// ============================================================
+
+ScoreBoard::ScoreBoard(const std::string& path)
+    : filePath(path)
+{
+}
+
+std::string ScoreBoard::getFilePath() const
+{
+    return filePath;
+}
+
+void ScoreBoard::addScore(const std::string& detectiveName,
+                          bool won,
+                          int credibility,
+                          int turnsLeft,
+                          const std::string& culpritRole,
+                          const std::string& date)
+{
+    // Validate detective name: must be non-empty, no space, no '|'
+    if (detectiveName.empty())
+    {
+        throw InvalidInputException("Detective name cannot be empty");
+    }
+    for (size_t i = 0; i < detectiveName.length(); ++i)
+    {
+        if (detectiveName[i] == ' ' || detectiveName[i] == '|')
+        {
+            throw InvalidInputException("Detective name cannot contain spaces or '|': " + detectiveName);
+        }
+    }
+
+    bool fileExisted = false;
+    bool endsWithNewline = true;
+
+    // Check if the file already exists and inspect heading and trailing newline
+    {
+        std::ifstream checkIn(filePath, std::ios::binary);
+        if (checkIn.is_open())
+        {
+            fileExisted = true;
+            std::string heading;
+            if (std::getline(checkIn, heading))
+            {
+                if (StringUtils::trim(heading) != "Detective|Result|Credibility|Turns_Left|Culprit|Date")
+                {
+                    throw FileCorruptException(filePath, 1,
+                        "Invalid heading in scoreboard file; expected 'Detective|Result|Credibility|Turns_Left|Culprit|Date'");
+                }
+            }
+
+            // Check if last byte is a newline to prevent line merging
+            checkIn.seekg(0, std::ios::end);
+            std::streampos sz = checkIn.tellg();
+            if (sz > 0)
+            {
+                checkIn.seekg(-1, std::ios::end);
+                char lastChar = 0;
+                checkIn.get(lastChar);
+                if (lastChar != '\n')
+                {
+                    endsWithNewline = false;
+                }
+            }
+            checkIn.close();
+        }
+    }
+
+    // If file does not exist, create it with heading row in existing folder
+    if (!fileExisted)
+    {
+        std::ofstream newOut(filePath);
+        if (!newOut.is_open())
+        {
+            // Folder does not exist or invalid path
+            throw FileNotFoundException(filePath);
+        }
+        newOut << "Detective|Result|Credibility|Turns_Left|Culprit|Date\n";
+        newOut.close();
+        endsWithNewline = true;
+    }
+
+    // Format output fields according to specification
+    std::string resultStr  = won ? "WIN" : "LOSE";
+    std::string credStr    = StringUtils::intToString(credibility);
+    std::string turnsStr   = StringUtils::padWithZeros(turnsLeft, 2);
+    std::string culpritStr = StringUtils::spaceToUnderscore(culpritRole);
+    std::string dateStr    = date.empty() ? StringUtils::currentDateDDMMYY() : date;
+
+    // Append record to file
+    std::ofstream appendOut(filePath, std::ios::app);
+    if (!appendOut.is_open())
+    {
+        throw FileNotFoundException(filePath);
+    }
+
+    if (!endsWithNewline)
+    {
+        appendOut << "\n";
+    }
+
+    appendOut << detectiveName << "|"
+              << resultStr << "|"
+              << credStr << "|"
+              << turnsStr << "|"
+              << culpritStr << "|"
+              << dateStr << "\n";
+    appendOut.close();
+}
+
+int ScoreBoard::getEntryCount() const
+{
+    std::ifstream file(filePath);
+    if (!file.is_open())
+    {
+        return 0;
+    }
+
+    std::string heading;
+    if (!std::getline(file, heading))
+    {
+        return 0;
+    }
+
+    if (StringUtils::trim(heading) != "Detective|Result|Credibility|Turns_Left|Culprit|Date")
+    {
+        throw FileCorruptException(filePath, 1, "Invalid heading in scoreboard file");
+    }
+
+    int count = 0;
+    std::string line;
+    int lineNum = 1;
+    while (std::getline(file, line))
+    {
+        ++lineNum;
+        std::string trimmed = StringUtils::trim(line);
+        if (trimmed.empty()) continue;
+
+        std::string parts[6];
+        int n = StringUtils::splitByDelimiter(trimmed, '|', parts, 6);
+        if (n != 6)
+        {
+            throw FileCorruptException(filePath, lineNum,
+                "Expected 6 fields in scoreboard row; found " + StringUtils::intToString(n));
+        }
+
+        if (parts[1] != "WIN" && parts[1] != "LOSE")
+        {
+            throw FileCorruptException(filePath, lineNum, "Invalid result; expected WIN or LOSE: " + parts[1]);
+        }
+
+        try { StringUtils::parseInt(parts[2]); }
+        catch (const InvalidInputException&)
+        {
+            throw FileCorruptException(filePath, lineNum, "Non-numeric credibility: " + parts[2]);
+        }
+
+        try { StringUtils::parseInt(parts[3]); }
+        catch (const InvalidInputException&)
+        {
+            throw FileCorruptException(filePath, lineNum, "Non-numeric turns: " + parts[3]);
+        }
+
+        if (parts[5].length() != 8 || parts[5][2] != '-' || parts[5][5] != '-')
+        {
+            throw FileCorruptException(filePath, lineNum, "Invalid date format; expected DD-MM-YY: " + parts[5]);
+        }
+
+        ++count;
+    }
+
+    return count;
+}
+
+void ScoreBoard::displayAll(std::ostream& out) const
+{
+    std::ifstream file(filePath);
+    if (!file.is_open())
+    {
+        throw FileNotFoundException(filePath);
+    }
+
+    std::string heading;
+    if (!std::getline(file, heading))
+    {
+        out << "No games recorded yet.\n";
+        return;
+    }
+
+    if (StringUtils::trim(heading) != "Detective|Result|Credibility|Turns_Left|Culprit|Date")
+    {
+        throw FileCorruptException(filePath, 1, "Invalid heading in scoreboard file");
+    }
+
+    struct ScoreRow
+    {
+        std::string detective;
+        std::string result;
+        std::string credibility;
+        std::string turnsLeft;
+        std::string culprit;
+        std::string date;
+    };
+
+    DynamicArray<ScoreRow> rows(8);
+    std::string line;
+    int lineNum = 1;
+
+    while (std::getline(file, line))
+    {
+        ++lineNum;
+        std::string trimmed = StringUtils::trim(line);
+        if (trimmed.empty()) continue;
+
+        std::string parts[6];
+        int n = StringUtils::splitByDelimiter(trimmed, '|', parts, 6);
+        if (n != 6)
+        {
+            throw FileCorruptException(filePath, lineNum,
+                "Expected 6 fields in scoreboard row; found " + StringUtils::intToString(n));
+        }
+
+        if (parts[1] != "WIN" && parts[1] != "LOSE")
+        {
+            throw FileCorruptException(filePath, lineNum, "Invalid result; expected WIN or LOSE: " + parts[1]);
+        }
+
+        try { StringUtils::parseInt(parts[2]); }
+        catch (const InvalidInputException&)
+        {
+            throw FileCorruptException(filePath, lineNum, "Non-numeric credibility: " + parts[2]);
+        }
+
+        try { StringUtils::parseInt(parts[3]); }
+        catch (const InvalidInputException&)
+        {
+            throw FileCorruptException(filePath, lineNum, "Non-numeric turns: " + parts[3]);
+        }
+
+        if (parts[5].length() != 8 || parts[5][2] != '-' || parts[5][5] != '-')
+        {
+            throw FileCorruptException(filePath, lineNum, "Invalid date format; expected DD-MM-YY: " + parts[5]);
+        }
+
+        ScoreRow row;
+        row.detective   = parts[0];
+        row.result      = parts[1];
+        row.credibility = parts[2];
+        row.turnsLeft   = parts[3];
+        row.culprit     = StringUtils::underscoreToSpace(parts[4]); // underscores shown as spaces
+        row.date        = parts[5];
+        rows.push(row);
+    }
+
+    if (rows.isEmpty())
+    {
+        out << "No games recorded yet.\n";
+        return;
+    }
+
+    int widthDet = 16;
+    int widthRes = 8;
+    int widthCrd = 13;
+    int widthTrn = 12;
+    int widthCul = 14;
+    int widthDat = 10;
+
+    for (int i = 0; i < rows.getSize(); ++i)
+    {
+        if (static_cast<int>(rows[i].detective.length()) + 2 > widthDet)
+        {
+            widthDet = static_cast<int>(rows[i].detective.length()) + 2;
+        }
+        if (static_cast<int>(rows[i].culprit.length()) + 2 > widthCul)
+        {
+            widthCul = static_cast<int>(rows[i].culprit.length()) + 2;
+        }
+    }
+
+    auto printBorder = [&]()
+    {
+        out << "+-";
+        for (int i = 0; i < widthDet; ++i) out << "-";
+        out << "-+-";
+        for (int i = 0; i < widthRes; ++i) out << "-";
+        out << "-+-";
+        for (int i = 0; i < widthCrd; ++i) out << "-";
+        out << "-+-";
+        for (int i = 0; i < widthTrn; ++i) out << "-";
+        out << "-+-";
+        for (int i = 0; i < widthCul; ++i) out << "-";
+        out << "-+-";
+        for (int i = 0; i < widthDat; ++i) out << "-";
+        out << "-+\n";
+    };
+
+    auto padRight = [](const std::string& str, int width) -> std::string
+    {
+        std::string res = str;
+        while (static_cast<int>(res.length()) < width)
+        {
+            res += ' ';
+        }
+        return res;
+    };
+
+    printBorder();
+    out << "| " << padRight("Detective", widthDet)
+        << " | " << padRight("Result", widthRes)
+        << " | " << padRight("Credibility", widthCrd)
+        << " | " << padRight("Turns Left", widthTrn)
+        << " | " << padRight("Culprit", widthCul)
+        << " | " << padRight("Date", widthDat)
+        << " |\n";
+    printBorder();
+
+    for (int i = 0; i < rows.getSize(); ++i)
+    {
+        out << "| " << padRight(rows[i].detective, widthDet)
+            << " | " << padRight(rows[i].result, widthRes)
+            << " | " << padRight(rows[i].credibility, widthCrd)
+            << " | " << padRight(rows[i].turnsLeft, widthTrn)
+            << " | " << padRight(rows[i].culprit, widthCul)
+            << " | " << padRight(rows[i].date, widthDat)
+            << " |\n";
+    }
+
+    printBorder();
+}
+
+
+// ============================================================
 // SECTION 5 -- CHARACTER HIERARCHY IMPLEMENTATIONS (Commit 3)
 // ============================================================
 
@@ -1577,29 +1913,145 @@ Character* CharacterFactory::create(const CharacterRecord& record, int culpritCo
 // nested block comment syntax issues when refactoring in Commit 6.
 // ============================================================
 
-// Stream insertion operators
+// ============================================================
+// EQUALITY OPERATORS (Commit 7, Module 11)
+// ============================================================
+
+// Tile equality operator: compares tileLetter only per project manual specifications
+bool Tile::operator==(const Tile& other) const
+{
+    return tileLetter == other.tileLetter;
+}
+
+// Tile inequality operator
+bool Tile::operator!=(const Tile& other) const
+{
+    return !(*this == other);
+}
+
+// Clue equality operator: compares letter, board position, and row
+bool Clue::operator==(const Clue& other) const
+{
+    return clueLetter == other.clueLetter &&
+           cluePosition == other.cluePosition &&
+           clueRow == other.clueRow;
+}
+
+// Clue inequality operator
+bool Clue::operator!=(const Clue& other) const
+{
+    return !(*this == other);
+}
+
+
+// ============================================================
+// FRIEND STREAM OPERATORS (Commit 7, Module 11)
+// ============================================================
+
+// Stream insertion operator for Tile: prints [L] if filled or [ ] if unfilled
+// Friend access allows inspecting filled and tileLetter directly in stream context
 std::ostream& operator<<(std::ostream& out, const Tile& tile)
 {
-    out << "[" << tile.tileLetter << "]";
+    if (tile.filled)
+    {
+        out << "[" << tile.tileLetter << "]";
+    }
+    else
+    {
+        out << "[ ]";
+    }
     return out;
 }
 
+// Stream extraction operator for Tile: reads one letter and marks tile filled
+// Friend access permits direct mutation of tile fields without public setter boilerplate
+std::istream& operator>>(std::istream& in, Tile& tile)
+{
+    char c = ' ';
+    if (in >> c)
+    {
+        tile.tileLetter = c;
+        tile.filled     = true;
+    }
+    return in;
+}
+
+// Stream insertion operator for Location: prints room name and Searched / NOT Searched
+// Never prints the hidden letterClueLoc to maintain mystery integrity
+// Friend access allows inspecting locSearchFlag and locName directly
 std::ostream& operator<<(std::ostream& out, const Location& loc)
 {
-    out << loc.locName << " (Pos: " << loc.boardPosLoc << ", Letter: " << loc.letterClueLoc << ")";
+    out << loc.locName << " (" << (loc.locSearchFlag ? "Searched" : "NOT Searched") << ")";
     return out;
 }
 
+// Stream extraction operator for Location: reads name, letter, position
+// Friend access allows deserializing into all internal Location fields in one operation
+std::istream& operator>>(std::istream& in, Location& loc)
+{
+    std::string name;
+    char letter = ' ';
+    int pos = 0;
+    if (in >> name >> letter >> pos)
+    {
+        loc.locName       = name;
+        loc.letterClueLoc = letter;
+        loc.boardPosLoc   = pos;
+        loc.locRow        = WordRow::Word1;
+        loc.locSearchFlag = false;
+    }
+    return in;
+}
+
+// Stream insertion operator for Character: polymorphic display delegation
+// Non-member operator provides standard stream syntax while delegating to virtual display()
+std::ostream& operator<<(std::ostream& out, const Character& character)
+{
+    character.display(out);
+    return out;
+}
+
+// Stream extraction operator for Character: reads one token into private characterName
+// Friend access is strictly required to modify private member characterName directly
+std::istream& operator>>(std::istream& in, Character& character)
+{
+    std::string token;
+    if (in >> token)
+    {
+        character.characterName = token;
+    }
+    return in;
+}
+
+// Stream insertion operator for TileRack
 std::ostream& operator<<(std::ostream& out, const TileRack& rack)
 {
     rack.display(out);
     return out;
 }
 
+// Stream insertion operator for Scrabble
 std::ostream& operator<<(std::ostream& out, const Scrabble& scrabble)
 {
     scrabble.display(out);
     return out;
+}
+
+// Stream extraction operator for Scrabble: reads row (1 or 2), position, letter,
+// builds a Clue, and calls placeLetter (which validates and may throw)
+// Friend access integrates extraction directly with board member functions
+std::istream& operator>>(std::istream& in, Scrabble& scrabble)
+{
+    int rowNum = 0;
+    int pos = 0;
+    char letter = ' ';
+    if (in >> rowNum >> pos >> letter)
+    {
+        WordRow row = (rowNum == 1) ? WordRow::Word1 : (rowNum == 2 ? WordRow::Word2 : static_cast<WordRow>(rowNum));
+        Clue clue{letter, pos, row};
+        scrabble.placeLetter(clue);
+    }
+    return in;
 }
 
 // ------------------------------------------------------------
@@ -2009,6 +2461,118 @@ void TileRack::display(std::ostream& out) const
     }
 }
 
+// Private raw tile helper: bypasses clue position validation to allow separator tiles (position 0)
+void TileRack::addRawTile(char letter, int position, bool isFilled)
+{
+    Tile t;
+    t.tileLetter = letter;
+    t.filled     = isFilled;
+    tiles.push(t);
+    positions.push(position);
+}
+
+// Merges two racks into a new rack with capacity (this->capacity + other.capacity + 1),
+// sorting tiles by board position with an intermediate separator tile (space, position 0).
+TileRack TileRack::operator+(const TileRack& other) const
+{
+    int newCap = this->capacity + other.capacity + 1;
+    TileRack result(newCap);
+
+    struct TilePos
+    {
+        char letter = ' ';
+        int  pos    = 0;
+        bool filled = false;
+    };
+
+    // Sort this rack's tiles by board position using selection sort (no STL)
+    int nA = this->tiles.getSize();
+    DynamicArray<TilePos> arrA(nA > 0 ? nA : 1);
+    for (int i = 0; i < nA; ++i)
+    {
+        TilePos item;
+        item.letter = this->tiles[i].tileLetter;
+        item.pos    = this->positions[i];
+        item.filled = this->tiles[i].filled;
+        arrA.push(item);
+    }
+
+    for (int i = 0; i < nA - 1; ++i)
+    {
+        int minIdx = i;
+        for (int j = i + 1; j < nA; ++j)
+        {
+            if (arrA[j].pos < arrA[minIdx].pos)
+            {
+                minIdx = j;
+            }
+        }
+        if (minIdx != i)
+        {
+            TilePos temp = arrA[i];
+            arrA[i] = arrA[minIdx];
+            arrA[minIdx] = temp;
+        }
+    }
+
+    for (int i = 0; i < nA; ++i)
+    {
+        result.addRawTile(arrA[i].letter, arrA[i].pos, arrA[i].filled);
+    }
+
+    // Add separator tile (space character, position 0) via private helper
+    result.addRawTile(' ', 0, false);
+
+    // Sort other rack's tiles by board position using selection sort (no STL)
+    int nB = other.tiles.getSize();
+    DynamicArray<TilePos> arrB(nB > 0 ? nB : 1);
+    for (int i = 0; i < nB; ++i)
+    {
+        TilePos item;
+        item.letter = other.tiles[i].tileLetter;
+        item.pos    = other.positions[i];
+        item.filled = other.tiles[i].filled;
+        arrB.push(item);
+    }
+
+    for (int i = 0; i < nB - 1; ++i)
+    {
+        int minIdx = i;
+        for (int j = i + 1; j < nB; ++j)
+        {
+            if (arrB[j].pos < arrB[minIdx].pos)
+            {
+                minIdx = j;
+            }
+        }
+        if (minIdx != i)
+        {
+            TilePos temp = arrB[i];
+            arrB[i] = arrB[minIdx];
+            arrB[minIdx] = temp;
+        }
+    }
+
+    for (int i = 0; i < nB; ++i)
+    {
+        result.addRawTile(arrB[i].letter, arrB[i].pos, arrB[i].filled);
+    }
+
+    return result;
+}
+
+// Returns all stored letters in order as unified clue text (Module 11)
+std::string TileRack::getClueText() const
+{
+    std::string text = "";
+    int sz = tiles.getSize();
+    for (int i = 0; i < sz; ++i)
+    {
+        text += tiles[i].tileLetter;
+    }
+    return text;
+}
+
 
 // ------------------------------------------------------------
 // RAW DMA VERSION (Modules 4 and 5) - kept for reference, replaced by DynamicArray<T> in Module 8
@@ -2405,7 +2969,10 @@ void Scrabble::placeLetter(const Clue& clue)
         throw SlotFilledException(clue.cluePosition);
     }
 
-    if (clue.clueLetter != targetWord[r][idx])
+    // Verify letter matching using Tile::operator== (Module 11)
+    Tile providedTile{clue.clueLetter, true};
+    Tile expectedTile{targetWord[r][idx], true};
+    if (providedTile != expectedTile)
     {
         throw InvalidLetterException(clue.clueLetter, clue.cluePosition);
     }

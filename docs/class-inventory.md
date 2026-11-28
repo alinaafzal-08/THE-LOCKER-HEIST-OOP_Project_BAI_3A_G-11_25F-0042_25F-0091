@@ -1,21 +1,21 @@
 # Class Inventory — The Locker Heist
 **Binding architecture contract.  Names, visibilities, and relationships here govern every commit.**
-Last updated: Commit 6 (Samreen Kousar, 25F-0091).
+Last updated: Commit 7 (Alina Afzal, 25F-0042).
 
 ---
 
 ## Enums and Structs
 
-### Defined in Commit 1 (`heist.h`)
+### Defined in Commit 1 & Extended in Commit 7 (`heist.h`, `heist.cpp`)
 
-| Item | Kind | Fields / Values | Notes |
-|------|------|-----------------|-------|
+| Item | Kind | Fields / Values / Operators | Notes |
+|------|------|-----------------------------|-------|
 | `WordRow` | `enum class` | `Word1 = 0`, `Word2 = 1` | Used as array index in TileRack |
 | `GameState` | `enum class` | `Menu`, `Playing`, `Won`, `Lost`, `Exit` | Controls game-loop branching |
 | `MenuChoice` | `enum class` | `NewGame=1`, `ViewLeaderBoard=2`, `About=3`, `Rules=4`, `Exit=5` | Cast from player int input |
-| `Tile` | `struct` | `char tileLetter=' '`; `bool filled=false` | One cell on a TileRack or Scrabble board |
-| `Clue` | `struct` | `char clueLetter=' '`; `int cluePosition=0`; `WordRow clueRow=Word1` | Letter hint discovered during investigation |
-| `Location` | `struct` | `std::string locName=""`; `char letterClueLoc=' '`; `int boardPosLoc=0`; `WordRow locRow=Word1`; `bool locSearchFlag=false` | One searchable room in the mansion |
+| `Tile` | `struct` | `char tileLetter=' '`; `bool filled=false`; <br> `bool operator==(const Tile&) const; bool operator!=(const Tile&) const;` <br> `friend operator<<; friend operator>>;` | One cell on a TileRack or Scrabble board. `operator==` compares `tileLetter` only per manual. Stream operators print `[L]` or `[ ]`, and extract character marking filled. |
+| `Clue` | `struct` | `char clueLetter=' '`; `int cluePosition=0`; `WordRow clueRow=Word1`; <br> `bool operator==(const Clue&) const; bool operator!=(const Clue&) const;` | Letter hint discovered during investigation. `operator==` compares letter, position, and row. |
+| `Location` | `struct` | `std::string locName=""`; `char letterClueLoc=' '`; `int boardPosLoc=0`; `WordRow locRow=Word1`; `bool locSearchFlag=false`; <br> `friend operator<<; friend operator>>;` | One searchable room in the mansion. `operator<<` renders name and search status (never exposes `letterClueLoc`). `operator>>` extracts name, letter, and position. |
 
 ### Implemented in Commit 2 (`heist.h`, `heist.cpp`)
 
@@ -49,18 +49,13 @@ GameException (protected: message, errorCode; virtual ~GameException(); getMessa
 
 ---
 
-## Utilities — Implemented in Commit 2 (Module 6)
+## Utilities — Implemented in Commit 2 & 7 (Module 6)
 
 | Class | Kind | Responsibility & Methods |
 |-------|------|--------------------------|
 | `StringUtils` | `static` | `trim()`, `splitByDelimiter()`, `toUpperCase()`, `isAllLetters()`, `isSingleLetter()`, `parseInt()`, `intToString()`, `padWithZeros()`, `equalsIgnoreCase()`, `replaceChar()`, `underscoreToSpace()`, `spaceToUnderscore()`, `currentDateDDMMYY()`, `formatPersonName()`, `formatPlaceName()`. Implemented without `<cctype>`, `<algorithm>`, or `<sstream>`. |
 | `DataLoader` | `static` | Constants: `FILE_RULES`, `FILE_CLUE`, `FILE_LOCATIONS`, `FILE_CHARACTERS`, `FILE_ABOUT`, `FILE_SCOREBOARD`. Dimensions: `ROLE_COUNT=7`, `LOCATION_COUNT=7`, `CHARACTER_COUNT=8`, `WORD1_LENGTH=7`, `WORD2_LENGTH=8`. Methods: `loadRules()`, `loadClueProfiles()`, `loadLocations()`, `loadCharacters()`, `loadAboutText()`, `validateConsistency()`, `roleToColumn()`. Strictly validates data format and throws `FileNotFoundException` or `FileCorruptException`. |
-
-### Scheduled for Commit 7
-
-| Class | Kind | Responsibility |
-|-------|------|---------------|
-| `ScoreBoard` | `static` | Reads and writes `leader/scoreBoard.txt`; formats two-digit turns and DD-MM-YY dates |
+| `ScoreBoard` | `class` | `filePath; ScoreBoard(path); addScore(name, won, cred, turns, culprit, date); displayAll(out); getEntryCount(); getFilePath();`. Appends records in strict format `Detective|Result|Credibility|Turns_Left|Culprit|Date`, auto-pads turns to two digits, converts culprit spaces to underscores, renders ASCII table (underscores displayed as spaces). Associated with `GameEngine` (main owns instance, engine holds pointer). Implemented in Commit 7. |
 
 ### Scheduled for Commit 8
 
@@ -73,10 +68,13 @@ GameException (protected: message, errorCode; virtual ~GameException(); getMessa
 ## Character Hierarchy — Implemented in Commit 3 (Module 3 & 9)
 
 ```
-Character  [abstract; private: characterName, characterRole, nationality, isCulprit, liveCount; friend GameEngine]
+Character  [abstract; private: characterName, characterRole, nationality, isCulprit, liveCount; friend GameEngine; friend operator<<; friend operator>>]
 │  pure virtual: display(std::ostream&) const
 │  virtual:      getMinimumCredibility(); hasClue(); getClue()
 │  static:       getLiveCount()
+│  friend:       GameEngine (access to private fields, exercised in Commit 8)
+│  friend:       operator>> (direct assignment to private characterName)
+│  friend:       operator<< (polymorphic stream output via virtual display)
 │
 ├── Victim             [minCred: 80; overrides hasClue (true), getClue (Word2), display]
 ├── Detective          [credibility, turns, dynamic string* solvedWords[2], composed TileRack locationRack (cap 7) & characterRack (cap 8); deep copy ctor & op=; Malay default; minCred: 0]
@@ -105,12 +103,12 @@ Sole polymorphic construction hub based on role strings; throws `InvalidInputExc
 
 ---
 
-## Board and Container Classes — Refactored in Commit 6 (Module 4, 5, & 8)
+## Board and Container Classes — Refactored in Commit 6 & Extended in Commit 7 (Module 4, 5, 8, & 11)
 
 | Class | Kind | Fields & Methods | Notes |
 |-------|------|------------------|-------|
-| `TileRack` | Dynamic Container | `DynamicArray<Tile> tiles; DynamicArray<int> positions; int capacity;` <br> `TileRack(int cap); ~TileRack(); TileRack(const TileRack&); TileRack& operator=(const TileRack&);` <br> `addTile(); removeTile(); removeLast(); markPlaced(); isPlaced(); hasPosition(); getCapacity(); getCount(); isEmpty(); isFull(); clear(); display(); friend operator<<;` | Refactored in C6 to use `DynamicArray<Tile>` and `DynamicArray<int>`. Original C4 raw DMA implementation preserved in single-line comments for viva reference. Friend of `GameEngine`. |
-| `Scrabble` | Dynamic Jagged Board | `DynamicArray<Tile> rows[2]; int rowLength[2]; std::string targetWord[2]; bool targetsLoaded;` <br> `Scrabble(); Scrabble(string w1, string w2); ~Scrabble(); Scrabble(const Scrabble&); Scrabble& operator=(const Scrabble&);` <br> `loadTargetWords(); placeLetter(); revealLetter(); verifyWord(); isRowComplete(); isComplete(); getRowLength(); getRowString(); display(); friend operator<<;` | Refactored in C6 to two `DynamicArray<Tile>` rows (`rows[0]` resized to 7, `rows[1]` resized to 8). Original C4 raw dynamic 2D array preserved in single-line comments. |
+| `TileRack` | Dynamic Container | `DynamicArray<Tile> tiles; DynamicArray<int> positions; int capacity;` <br> `TileRack(int cap); ~TileRack(); TileRack(const TileRack&); TileRack& operator=(const TileRack&);` <br> `addTile(); removeTile(); removeLast(); markPlaced(); isPlaced(); hasPosition(); getCapacity(); getCount(); isEmpty(); isFull(); clear(); display();` <br> `operator+(other); getClueText(); addRawTile(); friend operator<<;` | Refactored in C6 to use `DynamicArray<Tile>` and `DynamicArray<int>`. In C7, added `operator+` (custom selection sort by board position, separator space tile at pos 0, deep copy) and `getClueText()` for combined clue string. Friend of `GameEngine`. |
+| `Scrabble` | Dynamic Jagged Board | `DynamicArray<Tile> rows[2]; int rowLength[2]; std::string targetWord[2]; bool targetsLoaded;` <br> `Scrabble(); Scrabble(string w1, string w2); ~Scrabble(); Scrabble(const Scrabble&); Scrabble& operator=(const Scrabble&);` <br> `loadTargetWords(); placeLetter(); revealLetter(); verifyWord(); isRowComplete(); isComplete(); getRowLength(); getRowString(); display(); friend operator<<; friend operator>>;` | Refactored in C6 to two `DynamicArray<Tile>` rows (`rows[0]` resized to 7, `rows[1]` resized to 8). In C7, `placeLetter` uses `Tile::operator==`; added friend stream extraction `operator>>` and insertion `operator<<`. |
 | `Cottage` | Dynamic Container | `DynamicArray<Location> locations;` <br> `Cottage(); Cottage(const LocationRecord records[], int count, int culpritColumn); ~Cottage(); Cottage(const Cottage&); Cottage& operator=(const Cottage&);` <br> `getLocationCount(); isLocationSearched(num); searchLocation(num); getLocationClue(num); getLocationName(num); getSearchedCount(); allSearched(); displayLocations(); friend operator<<;` | Refactored in C6 to `DynamicArray<Location>` (stores `Location` structs by value). Original C5 raw dynamic pointer array `Location**` preserved in single-line comments. Aggregation relationship with `Location[]` (Decision R16). |
 
 ### Scheduled for Commit 8
@@ -137,7 +135,13 @@ Sole polymorphic construction hub based on role strings; throws `InvalidInputExc
 | Uses | GameEngine → GameException | Dependency |
 | Uses | DataLoader → GameException | Dependency |
 | Uses | Scrabble → Clue | Dependency |
-| Access | GameEngine ↔ Character | Friend |
+| Access | GameEngine ↔ Character | Friend (exercised in Commit 8) |
+| Output | operator<< for Tile, Character, Location, TileRack, Scrabble, Cottage | Friend function |
+| Input | operator>> for Tile, Character, Location, Scrabble | Friend function |
+| Merge | TileRack + TileRack → TileRack | Operator overloading (Module 11) |
+| Equality | Tile == Tile, Clue == Clue | Operator overloading (Module 11) |
+| Pattern | GameEngine | Singleton |
+| Inheritance | PA | Diamond (BusinessRelations + CloseRelations, both virtual public Suspect) |
 | Output | operator<< for Tile, Character, Location, TileRack, Scrabble, Cottage | Friend function |
 | Pattern | GameEngine | Singleton |
 | Inheritance | PA | Diamond (BusinessRelations + CloseRelations, both virtual public Suspect) |

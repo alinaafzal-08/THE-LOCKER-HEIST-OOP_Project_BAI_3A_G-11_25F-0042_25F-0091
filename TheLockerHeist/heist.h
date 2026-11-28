@@ -68,10 +68,21 @@ struct Tile
 {
     char tileLetter = ' ';   // letter stored on this tile (' ' = empty)
     bool filled     = false; // whether a valid letter has been placed
+
+    // Equality operators (Module 11) - compare tileLetter only per project manual
+    bool operator==(const Tile& other) const;
+    bool operator!=(const Tile& other) const;
+
+    // Stream friend operators (Module 11)
+    // Friend access allows canonical stream syntax while accessing internal tile state
+    friend std::ostream& operator<<(std::ostream& out, const Tile& tile);
+    friend std::istream& operator>>(std::istream& in, Tile& tile);
 };
 
 // Stream insertion operator for Tile
 std::ostream& operator<<(std::ostream& out, const Tile& tile);
+// Stream extraction operator for Tile
+std::istream& operator>>(std::istream& in, Tile& tile);
 
 // Clue represents a single letter hint obtained via search or interview.
 struct Clue
@@ -79,6 +90,10 @@ struct Clue
     char    clueLetter   = ' ';            // character revealed
     int     cluePosition = 0;              // 1-based target word position
     WordRow clueRow      = WordRow::Word1; // target row for this clue
+
+    // Equality operators (Module 11) - compares letter, position, and row
+    bool operator==(const Clue& other) const;
+    bool operator!=(const Clue& other) const;
 };
 
 // Location represents a searchable area in Mr. Leonardo's cottage.
@@ -89,10 +104,17 @@ struct Location
     int         boardPosLoc   = 0;              // 1-based position in Word 1
     WordRow     locRow        = WordRow::Word1; // always Word1 for locations
     bool        locSearchFlag = false;          // true if already searched
+
+    // Stream friend operators (Module 11)
+    // Friend access permits stream I/O to access and populate all Location fields
+    friend std::ostream& operator<<(std::ostream& out, const Location& loc);
+    friend std::istream& operator>>(std::istream& in, Location& loc);
 };
 
 // Stream insertion operator for Location
 std::ostream& operator<<(std::ostream& out, const Location& loc);
+// Stream extraction operator for Location
+std::istream& operator>>(std::istream& in, Location& loc);
 
 
 // ============================================================
@@ -358,6 +380,44 @@ public:
 
 
 // ============================================================
+// SECTION 6B -- SCOREBOARD (Commit 7, Module 6)
+// ScoreBoard manages persistent match records stored in leader/scoreBoard.txt.
+// Formats each game record strictly: Detective|Result|Credibility|Turns_Left|Culprit|Date.
+// GameEngine is ASSOCIATED with ScoreBoard (the engine holds a pointer to it,
+// while main() owns the lifetime of the ScoreBoard instance).
+// ============================================================
+
+class ScoreBoard
+{
+private:
+    std::string filePath; // Relative or absolute file path to the scoreboard text file
+
+public:
+    // Constructs scoreboard bound to specified file path (defaults to leader/scoreBoard.txt)
+    explicit ScoreBoard(const std::string& path = DataLoader::FILE_SCOREBOARD);
+
+    // Appends a new match entry; creates file with heading if missing in existing directory.
+    // Throws InvalidInputException on invalid detective name, FileNotFoundException if folder
+    // is missing, and FileCorruptException if heading is wrong or file is corrupted.
+    void addScore(const std::string& detectiveName,
+                  bool won,
+                  int credibility,
+                  int turnsLeft,
+                  const std::string& culpritRole,
+                  const std::string& date);
+
+    // Validates file integrity and renders formatted ASCII table to output stream
+    void displayAll(std::ostream& out = std::cout) const;
+
+    // Returns total count of valid game score entries recorded in the file
+    int getEntryCount() const;
+
+    // Accessor returning the target file path
+    std::string getFilePath() const;
+};
+
+
+// ============================================================
 // SECTION 7 -- GENERIC CONTAINER TEMPLATE (Commit 6, Module 8)
 // DynamicArray<T> provides a type-safe, automatically resizing
 // heap buffer implementing generic programming principles.
@@ -543,7 +603,13 @@ private:
     DynamicArray<int>  positions;  // Parallel dynamic array of 1-based board positions
     int                capacity;   // Logical maximum capacity enforced by game rules
 
+    // Private raw tile helper: bypasses clue position validation to allow separator tiles (position 0)
+    void addRawTile(char letter, int position, bool isFilled = true);
+
     friend class GameEngine;
+
+    // Friend stream insertion operator (Module 11)
+    friend std::ostream& operator<<(std::ostream& out, const TileRack& rack);
 
 public:
     // Constructs a rack with the specified capacity (minimum 1)
@@ -557,6 +623,13 @@ public:
 
     // Destructor (DynamicArray members automatically release their own memory)
     ~TileRack();
+
+    // Merges two racks into a new rack with capacity (this->capacity + other.capacity + 1),
+    // sorting tiles by board position with an intermediate separator tile (space, position 0).
+    TileRack operator+(const TileRack& other) const;
+
+    // Returns all stored letters in order, separated by space (Module 11 / clue text)
+    std::string getClueText() const;
 
     // Adds a clue tile; throws if full, letter invalid, position < 1, or duplicate position
     void addTile(const Clue& clue);
@@ -644,10 +717,17 @@ public:
 
     // Renders the current state of both word rows
     void display(std::ostream& out) const;
+
+    // Stream friend operators (Module 11)
+    // Friend access allows stream operators to interact directly with Scrabble state
+    friend std::ostream& operator<<(std::ostream& out, const Scrabble& scrabble);
+    friend std::istream& operator>>(std::istream& in, Scrabble& scrabble);
 };
 
 // Stream insertion operator for Scrabble
 std::ostream& operator<<(std::ostream& out, const Scrabble& scrabble);
+// Stream extraction operator for Scrabble (reads row, pos, letter and calls placeLetter)
+std::istream& operator>>(std::istream& in, Scrabble& scrabble);
 
 // Cottage manages the searchable rooms of Mr. Leonardo's mansion.
 // Refactored from raw Location** pointer array to DynamicArray<Location> (stored by value).
@@ -712,7 +792,11 @@ private:
 
     static int liveCount; // Tracks currently active objects for memory leak tests
 
+    // GameEngine is declared friend across Character hierarchy (exercised in Commit 8)
     friend class GameEngine;
+
+    // Friend stream extraction operator needs direct access to private characterName
+    friend std::istream& operator>>(std::istream& in, Character& character);
 
 public:
     Character(const std::string& name, const std::string& role, const std::string& nat);
@@ -734,7 +818,15 @@ public:
     virtual Clue getClue() const;
 
     static int getLiveCount();
+
+    // Stream friend insertion operator calls virtual display()
+    friend std::ostream& operator<<(std::ostream& out, const Character& character);
 };
+
+// Stream insertion operator for Character (polymorphic output via virtual display)
+std::ostream& operator<<(std::ostream& out, const Character& character);
+// Stream extraction operator for Character (reads one token into private characterName)
+std::istream& operator>>(std::istream& in, Character& character);
 
 // Victim represents Mr. Leonardo, who provides the first Word 2 clue letter.
 class Victim : public Character

@@ -1381,6 +1381,399 @@ static int runDynamicArraySelfTest()
 }
 
 // ------------------------------------------------------------
+// runScoreBoardAndOperatorsSelfTest()  --  ST-07 (Commit 7)
+// ------------------------------------------------------------
+static int runScoreBoardAndOperatorsSelfTest()
+{
+    int passed = 0;
+    int failed = 0;
+
+    std::cout << "========================================\n";
+    std::cout << "  ST-07  ScoreBoard & Operators Self-Test\n";
+    std::cout << "========================================\n";
+
+    // 1. Verify authentic leader/scoreBoard.txt content preservation
+    std::string originalScoreBoardContent = "";
+    {
+        std::ifstream authenticFile(DataLoader::FILE_SCOREBOARD);
+        if (authenticFile.is_open())
+        {
+            std::string line;
+            while (std::getline(authenticFile, line))
+            {
+                originalScoreBoardContent += line + "\n";
+            }
+        }
+    }
+
+    // 2. ScoreBoard operations on temporary file
+    const std::string tempScoreBoardPath = "temp_scoreboard_st07.txt";
+    std::remove(tempScoreBoardPath.c_str());
+
+    {
+        ScoreBoard sb(tempScoreBoardPath);
+        check(sb.getFilePath() == tempScoreBoardPath,
+              "ST-07: ScoreBoard bound to specified file path", passed, failed);
+
+        // Add a WIN entry
+        sb.addScore("Insp.Jamshad", true, 35, 7, "Partner 2", "10-10-26");
+        check(sb.getEntryCount() == 1,
+              "ST-07: getEntryCount() returns 1 after first addScore", passed, failed);
+
+        // Add a LOSE entry
+        sb.addScore("Agent_007", false, 0, 5, "Servant", "11-10-26");
+        check(sb.getEntryCount() == 2,
+              "ST-07: getEntryCount() returns 2 after second addScore", passed, failed);
+
+        // Verify exact file contents line by line
+        std::ifstream readSb(tempScoreBoardPath);
+        std::string lineHeading, line1, line2;
+        std::getline(readSb, lineHeading);
+        std::getline(readSb, line1);
+        std::getline(readSb, line2);
+        readSb.close();
+
+        check(lineHeading == "Detective|Result|Credibility|Turns_Left|Culprit|Date",
+              "ST-07: Scoreboard heading row strictly matches format", passed, failed);
+        check(line1 == "Insp.Jamshad|WIN|35|07|Partner_2|10-10-26",
+              "ST-07: WIN entry formatted with Partner_2 underscore and 07 padding", passed, failed);
+        check(line2 == "Agent_007|LOSE|0|05|Servant|11-10-26",
+              "ST-07: LOSE entry formatted with 05 padding and Servant role", passed, failed);
+
+        // Capture displayAll output to temp file
+        const std::string tempDisplayPath = "temp_sb_display.txt";
+        std::remove(tempDisplayPath.c_str());
+        {
+            std::ofstream dispOut(tempDisplayPath);
+            sb.displayAll(dispOut);
+        }
+
+        std::string dispContent = "";
+        {
+            std::ifstream dispIn(tempDisplayPath);
+            std::string dLine;
+            while (std::getline(dispIn, dLine))
+            {
+                dispContent += dLine + "\n";
+            }
+        }
+        std::remove(tempDisplayPath.c_str());
+
+        check(dispContent.find("Detective") != std::string::npos &&
+              dispContent.find("Turns Left") != std::string::npos,
+              "ST-07: displayAll() table header renders columns with spaces", passed, failed);
+        check(dispContent.find("Insp.Jamshad") != std::string::npos &&
+              dispContent.find("Partner 2") != std::string::npos,
+              "ST-07: displayAll() renders Partner 2 with underscores shown as spaces", passed, failed);
+        check(dispContent.find("Agent_007") != std::string::npos &&
+              dispContent.find("Servant") != std::string::npos,
+              "ST-07: displayAll() renders Agent_007 record cleanly", passed, failed);
+
+        // Input validation: spaces, pipes, empty names
+        bool caughtSpace = false;
+        try { sb.addScore("Agent 007", false, 0, 5, "Servant", "11-10-26"); }
+        catch (const InvalidInputException&) { caughtSpace = true; }
+        check(caughtSpace, "ST-07: Detective name with space throws InvalidInputException", passed, failed);
+
+        bool caughtPipe = false;
+        try { sb.addScore("Agent|007", false, 0, 5, "Servant", "11-10-26"); }
+        catch (const InvalidInputException&) { caughtPipe = true; }
+        check(caughtPipe, "ST-07: Detective name with pipe throws InvalidInputException", passed, failed);
+
+        bool caughtEmpty = false;
+        try { sb.addScore("", false, 0, 5, "Servant", "11-10-26"); }
+        catch (const InvalidInputException&) { caughtEmpty = true; }
+        check(caughtEmpty, "ST-07: Empty detective name throws InvalidInputException", passed, failed);
+    }
+    std::remove(tempScoreBoardPath.c_str());
+
+    // 3. Missing file with missing folder throws FileNotFoundException
+    {
+        ScoreBoard missingFolderSb("nonexistent_folder_st07/scores.txt");
+        bool caughtMissingFolder = false;
+        try
+        {
+            missingFolderSb.addScore("Hero", true, 50, 10, "Cook", "01-01-26");
+        }
+        catch (const FileNotFoundException&)
+        {
+            caughtMissingFolder = true;
+        }
+        check(caughtMissingFolder,
+              "ST-07: ScoreBoard::addScore with missing folder throws FileNotFoundException", passed, failed);
+    }
+
+    // 4. FileCorruptException for wrong heading and 5-field row
+    {
+        const std::string corruptHeadPath = "temp_corrupt_head.txt";
+        std::remove(corruptHeadPath.c_str());
+        {
+            std::ofstream f(corruptHeadPath);
+            f << "Bad_Heading_Row\n";
+        }
+
+        ScoreBoard badHeadSb(corruptHeadPath);
+        bool caughtBadHead = false;
+        try { badHeadSb.getEntryCount(); }
+        catch (const FileCorruptException&) { caughtBadHead = true; }
+        check(caughtBadHead, "ST-07: Corrupted heading row throws FileCorruptException", passed, failed);
+        std::remove(corruptHeadPath.c_str());
+
+        const std::string fiveFieldPath = "temp_5field_row.txt";
+        std::remove(fiveFieldPath.c_str());
+        {
+            std::ofstream f(fiveFieldPath);
+            f << "Detective|Result|Credibility|Turns_Left|Culprit|Date\n";
+            f << "Incomplete|WIN|10|05|Cook\n"; // only 5 fields
+        }
+
+        ScoreBoard fiveFieldSb(fiveFieldPath);
+        bool caught5Field = false;
+        try { fiveFieldSb.getEntryCount(); }
+        catch (const FileCorruptException&) { caught5Field = true; }
+        check(caught5Field, "ST-07: Row with 5 fields throws FileCorruptException", passed, failed);
+        std::remove(fiveFieldPath.c_str());
+    }
+
+    // 5. Unterminated last line handling
+    {
+        const std::string unterminatedPath = "temp_unterminated.txt";
+        std::remove(unterminatedPath.c_str());
+        {
+            std::ofstream f(unterminatedPath, std::ios::binary);
+            f << "Detective|Result|Credibility|Turns_Left|Culprit|Date\n";
+            f << "Row1|WIN|10|05|Cook|01-01-26"; // NO trailing newline
+        }
+
+        ScoreBoard unterminatedSb(unterminatedPath);
+        unterminatedSb.addScore("Row2", false, 0, 2, "Guard", "02-01-26");
+
+        std::ifstream readBack(unterminatedPath);
+        std::string h, r1, r2;
+        std::getline(readBack, h);
+        std::getline(readBack, r1);
+        std::getline(readBack, r2);
+        readBack.close();
+
+        check(r1 == "Row1|WIN|10|05|Cook|01-01-26" &&
+              r2 == "Row2|LOSE|0|02|Guard|02-01-26",
+              "ST-07: Unterminated last line correctly separated without merging rows", passed, failed);
+        std::remove(unterminatedPath.c_str());
+    }
+
+    // 6. Equality operators on Tile and Clue
+    {
+        Tile t1{'A', true};
+        Tile t2{'A', false};
+        Tile t3{'B', true};
+
+        check(t1 == t2, "ST-07: Tile::operator== compares tileLetter only ('A' == 'A')", passed, failed);
+        check(t1 != t3, "ST-07: Tile::operator!= detects differing letters ('A' != 'B')", passed, failed);
+        check(!(t1 == t3), "ST-07: Tile::operator== returns false for differing letters", passed, failed);
+
+        Clue c1{'P', 1, WordRow::Word1};
+        Clue c2{'P', 1, WordRow::Word1};
+        Clue cDiffLetter{'A', 1, WordRow::Word1};
+        Clue cDiffPos{'P', 2, WordRow::Word1};
+        Clue cDiffRow{'P', 1, WordRow::Word2};
+
+        check(c1 == c2, "ST-07: Clue::operator== returns true when letter, pos, and row match", passed, failed);
+        check(c1 != cDiffLetter, "ST-07: Clue::operator!= returns true on letter mismatch", passed, failed);
+        check(c1 != cDiffPos, "ST-07: Clue::operator!= returns true on position mismatch", passed, failed);
+        check(c1 != cDiffRow, "ST-07: Clue::operator!= returns true on row mismatch", passed, failed);
+    }
+
+    // 7. Stream insertion operators (Tile, Location, Character base, Scrabble)
+    {
+        const std::string tempOutPath = "temp_stream_insertion.txt";
+        std::remove(tempOutPath.c_str());
+        {
+            std::ofstream out(tempOutPath);
+
+            Tile filledTile{'Z', true};
+            Tile emptyTile{' ', false};
+            out << filledTile << " " << emptyTile << "\n";
+
+            Location loc{"Study_Room", 'S', 2, WordRow::Word1, false};
+            out << loc << "\n";
+            loc.locSearchFlag = true;
+            out << loc << "\n";
+
+            // Polymorphic Character insertion via base pointer
+            Character* polyChar = new Cook("Mr. Enzo", "Italian", 'A', 1);
+            out << *polyChar << "\n";
+            delete polyChar;
+
+            Scrabble sc("PHARAOH", "PYRAMIDS");
+            out << sc << "\n";
+        }
+
+        std::string insertionText = "";
+        {
+            std::ifstream in(tempOutPath);
+            std::string l;
+            while (std::getline(in, l))
+            {
+                insertionText += l + "\n";
+            }
+        }
+        std::remove(tempOutPath.c_str());
+
+        check(insertionText.find("[Z]") != std::string::npos &&
+              insertionText.find("[ ]") != std::string::npos,
+              "ST-07: Tile operator<< prints [L] for filled and [ ] for empty", passed, failed);
+        check(insertionText.find("Study_Room (NOT Searched)") != std::string::npos,
+              "ST-07: Location operator<< prints NOT Searched when unsearched", passed, failed);
+        check(insertionText.find("Study_Room (Searched)") != std::string::npos,
+              "ST-07: Location operator<< prints Searched when searched", passed, failed);
+        check(insertionText.find("'S'") == std::string::npos &&
+              insertionText.find("Letter: S") == std::string::npos,
+              "ST-07: Location operator<< never exposes hidden letterClueLoc", passed, failed);
+        check(insertionText.find("Cook") != std::string::npos &&
+              insertionText.find("Mr. Enzo") != std::string::npos,
+              "ST-07: Character operator<< dispatches polymorphically via base pointer", passed, failed);
+        check(insertionText.find("Word 1:") != std::string::npos &&
+              insertionText.find("Word 2:") != std::string::npos,
+              "ST-07: Scrabble operator<< renders crossword grid rows", passed, failed);
+    }
+
+    // 8. Stream extraction operators (Tile, Location, Character, Scrabble)
+    {
+        const std::string tempInPath = "temp_stream_extraction.txt";
+        std::remove(tempInPath.c_str());
+        {
+            std::ofstream out(tempInPath);
+            out << "K\n";
+            out << "LivingRoom L 4\n";
+            out << "RenamedDetective\n";
+            out << "1 1 P\n";
+        }
+
+        Tile extractedTile;
+        Location extractedLoc;
+        Guard testGuard("Mr. Lukas", "German", 'G', 2);
+        Character* baseChar = &testGuard;
+        Scrabble extractedScrabble("PHARAOH", "PYRAMIDS");
+
+        {
+            std::ifstream in(tempInPath);
+            in >> extractedTile;
+            in >> extractedLoc;
+            in >> *baseChar;
+            in >> extractedScrabble;
+        }
+        std::remove(tempInPath.c_str());
+
+        check(extractedTile.tileLetter == 'K' && extractedTile.filled,
+              "ST-07: Tile operator>> extracts letter 'K' and sets filled true", passed, failed);
+        check(extractedLoc.locName == "LivingRoom" &&
+              extractedLoc.letterClueLoc == 'L' &&
+              extractedLoc.boardPosLoc == 4,
+              "ST-07: Location operator>> extracts name, letter, and position", passed, failed);
+        check(baseChar->getName() == "RenamedDetective",
+              "ST-07: Character operator>> updates private characterName via friend access", passed, failed);
+        check(extractedScrabble.revealLetter(WordRow::Word1, 1) == 'P',
+              "ST-07: Scrabble operator>> extracts row 1 pos 1 letter 'P' and places it", passed, failed);
+
+        // Invalid position extraction throws InvalidPositionException
+        const std::string tempBadPos = "temp_bad_pos.txt";
+        std::remove(tempBadPos.c_str());
+        {
+            std::ofstream out(tempBadPos);
+            out << "1 99 P\n";
+        }
+        bool caughtBadPos = false;
+        {
+            std::ifstream in(tempBadPos);
+            try { in >> extractedScrabble; }
+            catch (const InvalidPositionException&) { caughtBadPos = true; }
+        }
+        std::remove(tempBadPos.c_str());
+        check(caughtBadPos, "ST-07: Scrabble operator>> with position 99 throws InvalidPositionException", passed, failed);
+
+        // Invalid letter extraction throws InvalidLetterException
+        const std::string tempBadLet = "temp_bad_let.txt";
+        std::remove(tempBadLet.c_str());
+        {
+            std::ofstream out(tempBadLet);
+            out << "1 2 Z\n"; // Pos 2 in PHARAOH is 'H', not 'Z'
+        }
+        bool caughtBadLet = false;
+        {
+            std::ifstream in(tempBadLet);
+            try { in >> extractedScrabble; }
+            catch (const InvalidLetterException&) { caughtBadLet = true; }
+        }
+        std::remove(tempBadLet.c_str());
+        check(caughtBadLet, "ST-07: Scrabble operator>> with invalid letter 'Z' throws InvalidLetterException", passed, failed);
+    }
+
+    // 9. TileRack operator+ (merging, selection sort, separator tile, getClueText)
+    {
+        // Construct two racks with scrambled PA letters
+        // Word 1: PHARAOH (7 letters)
+        TileRack rack1(7);
+        rack1.addTile(Clue{'R', 4, WordRow::Word1});
+        rack1.addTile(Clue{'P', 1, WordRow::Word1});
+        rack1.addTile(Clue{'H', 7, WordRow::Word1});
+        rack1.addTile(Clue{'H', 2, WordRow::Word1});
+        rack1.addTile(Clue{'A', 5, WordRow::Word1});
+        rack1.addTile(Clue{'A', 3, WordRow::Word1});
+        rack1.addTile(Clue{'O', 6, WordRow::Word1});
+
+        // Word 2: PYRAMIDS (8 letters)
+        TileRack rack2(8);
+        rack2.addTile(Clue{'S', 8, WordRow::Word2});
+        rack2.addTile(Clue{'R', 3, WordRow::Word2});
+        rack2.addTile(Clue{'P', 1, WordRow::Word2});
+        rack2.addTile(Clue{'I', 6, WordRow::Word2});
+        rack2.addTile(Clue{'Y', 2, WordRow::Word2});
+        rack2.addTile(Clue{'M', 5, WordRow::Word2});
+        rack2.addTile(Clue{'D', 7, WordRow::Word2});
+        rack2.addTile(Clue{'A', 4, WordRow::Word2});
+
+        TileRack merged = rack1 + rack2;
+
+        check(merged.getCapacity() == rack1.getCapacity() + rack2.getCapacity() + 1,
+              "ST-07: TileRack operator+ capacity equals a + b + 1 (7 + 8 + 1 = 16)", passed, failed);
+        check(merged.getCount() == 16,
+              "ST-07: Merged rack holds 16 total tiles (7 + 1 separator + 8)", passed, failed);
+        check(merged.getClueText() == "PHARAOH PYRAMIDS",
+              "ST-07: getClueText() returns sorted clues: 'PHARAOH PYRAMIDS'", passed, failed);
+
+        // Independent memory check: mutating merged does not affect operands
+        merged.removeLast();
+        check(merged.getCount() == 15,
+              "ST-07: Merged rack removeLast() decrements count to 15", passed, failed);
+        check(rack1.getCount() == 7 && rack2.getCount() == 8,
+              "ST-07: Operands retain original counts (7 and 8) with independent heap memory", passed, failed);
+    }
+
+    // 10. Final check: confirm authentic leader/scoreBoard.txt content is identical
+    {
+        std::string afterScoreBoardContent = "";
+        std::ifstream authenticFile(DataLoader::FILE_SCOREBOARD);
+        if (authenticFile.is_open())
+        {
+            std::string line;
+            while (std::getline(authenticFile, line))
+            {
+                afterScoreBoardContent += line + "\n";
+            }
+        }
+
+        check(originalScoreBoardContent == afterScoreBoardContent,
+              "ST-07: Authentic leader/scoreBoard.txt is strictly unchanged", passed, failed);
+    }
+
+    std::cout << "----------------------------------------\n";
+    std::cout << "  Result: " << passed << " passed, " << failed << " failed.\n";
+    std::cout << "========================================\n\n";
+
+    return failed;
+}
+
+// ------------------------------------------------------------
 // main()
 // ------------------------------------------------------------
 int main(int argc, char* argv[])
@@ -1395,6 +1788,7 @@ int main(int argc, char* argv[])
         totalFailures += runBoardClassesSelfTest();
         totalFailures += runCottageAndDetectiveSelfTest();
         totalFailures += runDynamicArraySelfTest();
+        totalFailures += runScoreBoardAndOperatorsSelfTest();
         return (totalFailures > 0) ? 1 : 0;
     }
 

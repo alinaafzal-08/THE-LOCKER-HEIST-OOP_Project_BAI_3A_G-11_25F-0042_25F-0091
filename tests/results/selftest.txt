@@ -275,3 +275,51 @@ Rack 2 (People): Rack: [A@1] [B@2] [C@3] [D@4] [E@5] [F@6] [G@7] [H@8]
   Result: 29 passed, 0 failed.
 ========================================
 
+========================================
+  ST-07  ScoreBoard & Operators Self-Test
+========================================
+  [PASS] ST-07: ScoreBoard bound to specified file path
+  [PASS] ST-07: getEntryCount() returns 1 after first addScore
+  [PASS] ST-07: getEntryCount() returns 2 after second addScore
+  [PASS] ST-07: Scoreboard heading row strictly matches format
+  [PASS] ST-07: WIN entry formatted with Partner_2 underscore and 07 padding
+  [PASS] ST-07: LOSE entry formatted with 05 padding and Servant role
+  [PASS] ST-07: displayAll() table header renders columns with spaces
+  [PASS] ST-07: displayAll() renders Partner 2 with underscores shown as spaces
+  [PASS] ST-07: displayAll() renders Agent_007 record cleanly
+  [PASS] ST-07: Detective name with space throws InvalidInputException
+  [PASS] ST-07: Detective name with pipe throws InvalidInputException
+  [PASS] ST-07: Empty detective name throws InvalidInputException
+  [PASS] ST-07: ScoreBoard::addScore with missing folder throws FileNotFoundException
+  [PASS] ST-07: Corrupted heading row throws FileCorruptException
+  [PASS] ST-07: Row with 5 fields throws FileCorruptException
+  [PASS] ST-07: Unterminated last line correctly separated without merging rows
+  [PASS] ST-07: Tile::operator== compares tileLetter only ('A' == 'A')
+  [PASS] ST-07: Tile::operator!= detects differing letters ('A' != 'B')
+  [PASS] ST-07: Tile::operator== returns false for differing letters
+  [PASS] ST-07: Clue::operator== returns true when letter, pos, and row match
+  [PASS] ST-07: Clue::operator!= returns true on letter mismatch
+  [PASS] ST-07: Clue::operator!= returns true on position mismatch
+  [PASS] ST-07: Clue::operator!= returns true on row mismatch
+  [PASS] ST-07: Tile operator<< prints [L] for filled and [ ] for empty
+  [PASS] ST-07: Location operator<< prints NOT Searched when unsearched
+  [PASS] ST-07: Location operator<< prints Searched when searched
+  [PASS] ST-07: Location operator<< never exposes hidden letterClueLoc
+  [PASS] ST-07: Character operator<< dispatches polymorphically via base pointer
+  [PASS] ST-07: Scrabble operator<< renders crossword grid rows
+  [PASS] ST-07: Tile operator>> extracts letter 'K' and sets filled true
+  [PASS] ST-07: Location operator>> extracts name, letter, and position
+  [PASS] ST-07: Character operator>> updates private characterName via friend access
+  [PASS] ST-07: Scrabble operator>> extracts row 1 pos 1 letter 'P' and places it
+  [PASS] ST-07: Scrabble operator>> with position 99 throws InvalidPositionException
+  [PASS] ST-07: Scrabble operator>> with invalid letter 'Z' throws InvalidLetterException
+  [PASS] ST-07: TileRack operator+ capacity equals a + b + 1 (7 + 8 + 1 = 16)
+  [PASS] ST-07: Merged rack holds 16 total tiles (7 + 1 separator + 8)
+  [PASS] ST-07: getClueText() returns sorted clues: 'PHARAOH PYRAMIDS'
+  [PASS] ST-07: Merged rack removeLast() decrements count to 15
+  [PASS] ST-07: Operands retain original counts (7 and 8) with independent heap memory
+  [PASS] ST-07: Authentic leader/scoreBoard.txt is strictly unchanged
+----------------------------------------
+  Result: 41 passed, 0 failed.
+========================================
+
