@@ -1068,6 +1068,10 @@ private:
     // without hanging when stdin is a redirected pipe from a test script.
     static bool inputClosed;
 
+    // Set to true during automated self-tests (--selftest) so screen clearing
+    // and interactive pauses do not erase test logs or block terminal execution.
+    static bool selfTestMode;
+
 public:
     // Clears the terminal screen (Windows: system("cls")).
     // Called between game phases to keep the display tidy.
@@ -1089,6 +1093,10 @@ public:
     // Returns true once std::cin has reached EOF.
     // Game loops check this flag to avoid blocking on a closed pipe.
     static bool isInputClosed();
+
+    // Configures automated self-test mode to bypass blocking waits
+    static void setSelfTestMode(bool enabled);
+    static bool isSelfTestMode();
 };
 
 
@@ -1166,6 +1174,9 @@ private:
     // Character records loaded from characters.txt (one per cast member)
     CharacterRecord characterRecords[DataLoader::CHARACTER_COUNT];
 
+    // Tracks whether each of the 8 characters has been interviewed in this round
+    bool interviewed[8];
+
     // ------------------------------------------------------------------
     // Private helpers used only by run() and beginRound()
     // ------------------------------------------------------------------
@@ -1176,8 +1187,14 @@ private:
     // Runs the full New Game flow: asks for a name, sets up data, enters the game loop
     void handleNewGame();
 
-    // The in-game action loop shown after the round is set up (Commit 8: view board + quit only)
+    // The in-game action loop shown after the round is set up
     void runInGameLoop();
+
+    // Interactive UI handler for [1] Visit a Location
+    void handleVisitLocation();
+
+    // Interactive UI handler for [2] Interview a Person
+    void handleInterviewPerson();
 
     // Renders the Rules screen using live RulesConfig values and static MIN_CREDIBILITY constants
     void showRules();
@@ -1220,6 +1237,39 @@ public:
     void setForcedCulprit(int oneToSeven);
 
     // ------------------------------------------------------------------
+    // Exploration engine methods (Module 13 & 14, Commit 9)
+    // Pure engine logic with zero console I/O, callable directly by automated tests.
+    // ------------------------------------------------------------------
+
+    // Visits a mansion location (1 to 7). First visit collects clue, places it on
+    // Scrabble board, and consumes 1 turn. Repeated visit returns existing clue,
+    // does not re-place, and applies a wrong step penalty (1 turn, -5 credibility).
+    Clue doVisit(int locationNumber);
+
+    // Interviews a household person (1 to 8). If detective credibility is below the
+    // character's minimum credibility, applies wrong step penalty (1 turn, -5 cred)
+    // and throws InterviewRestrictedException. First interview collects clue, places
+    // it on Scrabble, and consumes 1 turn. Repeated interview returns clue, does not
+    // re-place, and applies a wrong step penalty.
+    Clue doInterview(int characterNumber);
+
+    // Applies a wrong step: adds 1 turn and reduces credibility by the magnitude of
+    // rules.wrongTurnPenalty (-5 -> 5 points deducted, clamped at 0).
+    void applyWrongStep();
+
+    // Evaluates game-ending conditions. In Commit 9, checks LOSE condition:
+    // credibility <= 0 OR turns used >= rules.maxTurns. Calls finishGame(false)
+    // if lost and returns true; returns false if game continues.
+    bool evaluateEndConditions();
+
+    // Ends game, displays result banner, reveals culprit, records score in ScoreBoard,
+    // waits for Enter, clears screen, and resets state to GameState::Menu.
+    void finishGame(bool won);
+
+    // Returns whether the specified character (1 to 8) has been interviewed.
+    bool isCharacterInterviewed(int characterNumber) const;
+
+    // ------------------------------------------------------------------
     // Static utility functions (also used by ST-08 self-tests)
     // ------------------------------------------------------------------
 
@@ -1240,6 +1290,7 @@ public:
     const Scrabble&   getScrabble()       const;
     const Cottage&    getCottage()        const;
     const Detective&  getDetective()      const;
+    Detective&        getDetective();
     const RulesConfig& getRules()         const;
 };
 

@@ -3422,12 +3422,26 @@ std::ostream& operator<<(std::ostream& out, const Cottage& cottage)
 
 // Static member definition: starts false; set to true when cin hits EOF.
 bool ConsoleUtils::inputClosed = false;
+bool ConsoleUtils::selfTestMode = false;
+
+void ConsoleUtils::setSelfTestMode(bool enabled)
+{
+    selfTestMode = enabled;
+}
+
+bool ConsoleUtils::isSelfTestMode()
+{
+    return selfTestMode;
+}
 
 // clearScreen() calls the Windows system command to wipe the terminal.
 // Using system("cls") from <cstdlib> which is already included.
 void ConsoleUtils::clearScreen()
 {
-    system("cls");
+    if (!selfTestMode)
+    {
+        system("cls");
+    }
 }
 
 // readLine() shows a prompt then reads one full line using std::getline.
@@ -3435,6 +3449,10 @@ void ConsoleUtils::clearScreen()
 // so callers can break out of their loops instead of blocking forever.
 std::string ConsoleUtils::readLine(const std::string& prompt)
 {
+    if (selfTestMode)
+    {
+        return "";
+    }
     std::string line;
     if (!prompt.empty())
     {
@@ -3549,10 +3567,11 @@ GameEngine::GameEngine()
     srand(static_cast<unsigned int>(std::time(nullptr)));
 
     // Initialise all cast slots to null so the destructor can safely
-    // skip slots that were never filled.
+    // skip slots that were never filled, and clear interview status.
     for (int i = 0; i < CAST_SIZE; ++i)
     {
         cast[i] = nullptr;
+        interviewed[i] = false;
     }
 }
 
@@ -3724,6 +3743,7 @@ void GameEngine::beginRound(const std::string& detectiveName)
     {
         delete cast[i];
         cast[i] = nullptr;
+        interviewed[i] = false;
     }
 
     // The culprit's role in the profile may use underscores (e.g. "Partner_1"),
@@ -3913,14 +3933,20 @@ void GameEngine::showRules()
     ConsoleUtils::readLine("  Press Enter to continue...");
 }
 
-// runInGameLoop() is the active-investigation loop for Commit 8.
-// Only options [3] View Scrabble Board and [6] Quit are available here;
-// all remaining in-game features are added in Commits 9-11.
+// runInGameLoop() is the active-investigation loop for Commit 9.
+// Options available:
+//   [1] Visit a Location
+//   [2] Interview a Person
+//   [3] View Scrabble Board (free)
+//   [6] Quit to main menu (records LOSE)
 void GameEngine::runInGameLoop()
 {
     while (state == GameState::Playing && !ConsoleUtils::isInputClosed())
     {
+        int turnNumber = detective.getTurnsUsed() + 1;
+
         std::cout << "\n";
+        std::cout << "--- TURN " << turnNumber << " ---\n";
         std::cout << "------------------------------------------------------------\n";
         std::cout << "  Credibility: " << detective.getCredibility()
                   << "  |  Turns used: " << detective.getTurnsUsed() << "\n";
@@ -3933,36 +3959,54 @@ void GameEngine::runInGameLoop()
         std::cout << "\n  Scrabble Board:\n";
         scrabble.display(std::cout);
 
-        // Show only the two options available in this commit
+        // Show available options in Commit 9
         std::cout << "\n  What would you like to do?\n";
+        std::cout << "    [1] Visit a Location\n";
+        std::cout << "    [2] Interview a Person\n";
         std::cout << "    [3] View Scrabble Board\n";
         std::cout << "    [6] Quit to main menu\n";
 
-        int choice = ConsoleUtils::readIntInRange("\n  Choice: ", 1, 9);
+        int choice = 0;
+        try
+        {
+            choice = ConsoleUtils::readIntInRange("\n  Choice: ", 1, 9);
+        }
+        catch (const InvalidInputException& ex)
+        {
+            std::cout << "  " << ex.getMessage() << "\n";
+            continue;
+        }
 
         if (ConsoleUtils::isInputClosed()) { break; }
 
         switch (choice)
         {
+            case 1:
+                handleVisitLocation();
+                break;
+
+            case 2:
+                handleInterviewPerson();
+                break;
+
             case 3:
-                // Re-display the board on explicit player request
+                // Re-display the board on explicit player request (free - no turn)
                 std::cout << "\n  Current Scrabble Board:\n";
                 scrabble.display(std::cout);
                 break;
 
             case 6:
             {
-                bool confirmed = ConsoleUtils::readYesNo("  Quit to main menu? No score will be recorded.");
+                bool confirmed = ConsoleUtils::readYesNo("  Quit to main menu? The game will be recorded as LOSE.");
                 if (confirmed)
                 {
-                    state = GameState::Menu;
+                    finishGame(false);
                 }
                 break;
             }
 
             default:
-                // Any other number is not a valid option in this commit
-                std::cout << "  That option is not available yet. Use [3] or [6].\n";
+                std::cout << "  That option is not available yet. Use [1], [2], [3], or [6].\n";
                 break;
         }
     }
@@ -4108,4 +4152,319 @@ const Detective& GameEngine::getDetective() const
 const RulesConfig& GameEngine::getRules() const
 {
     return rules;
+}
+
+Detective& GameEngine::getDetective()
+{
+    return detective;
+}
+
+
+// ============================================================
+// EXPLORATION & GAMEPLAY METHODS (Commit 9, Modules 13 & 14)
+// ============================================================
+
+// doVisit() searches a room in the cottage (1 to 7).
+// First visit: calls searchLocation, collects the clue in detective's rack,
+// places the tile on the Scrabble board, and consumes 1 turn.
+// Repeat visit: returns the clue without re-placing and applies a wrong-step
+// penalty (costs 1 turn and -5 credibility).
+Clue GameEngine::doVisit(int locationNumber)
+{
+    if (locationNumber < 1 || locationNumber > DataLoader::LOCATION_COUNT)
+    {
+        throw InvalidPositionException(locationNumber, DataLoader::LOCATION_COUNT);
+    }
+
+    if (!cottage.isLocationSearched(locationNumber))
+    {
+        Clue c = cottage.searchLocation(locationNumber);
+        detective.collectClue(c);
+        scrabble.placeLetter(c);
+        detective.addTurn();
+        return c;
+    }
+    else
+    {
+        Clue c = cottage.getLocationClue(locationNumber);
+        applyWrongStep();
+        return c;
+    }
+}
+
+// doInterview() questions a household character (1 to 8 in characters.txt order).
+// If detective credibility is below the character's minimum credibility requirement,
+// applies a wrong-step penalty (costs 1 turn, -5 cred) and throws InterviewRestrictedException.
+// First interview: collects the clue, places it on the Scrabble board, marks character
+// interviewed, and consumes 1 turn.
+// Repeat interview: returns the clue without re-placing and applies a wrong-step penalty.
+Clue GameEngine::doInterview(int characterNumber)
+{
+    if (characterNumber < 1 || characterNumber > CAST_SIZE)
+    {
+        throw InvalidPositionException(characterNumber, CAST_SIZE);
+    }
+
+    int idx = characterNumber - 1;
+    if (cast[idx] == nullptr)
+    {
+        throw InvalidInputException("Character slot " + StringUtils::intToString(characterNumber) + " is uninitialized.");
+    }
+
+    int minCred = cast[idx]->getMinimumCredibility();
+    if (detective.getCredibility() < minCred)
+    {
+        applyWrongStep();
+        throw InterviewRestrictedException(cast[idx]->getName(), minCred, detective.getCredibility());
+    }
+
+    if (!interviewed[idx])
+    {
+        interviewed[idx] = true;
+        Clue c = cast[idx]->getClue();
+        detective.collectClue(c);
+        scrabble.placeLetter(c);
+        detective.addTurn();
+        return c;
+    }
+    else
+    {
+        Clue c = cast[idx]->getClue();
+        applyWrongStep();
+        return c;
+    }
+}
+
+// applyWrongStep() increments turn count and reduces detective credibility
+// by the magnitude of rules.wrongTurnPenalty (clamped at 0).
+void GameEngine::applyWrongStep()
+{
+    detective.addTurn();
+    int penalty = (rules.wrongTurnPenalty < 0) ? -rules.wrongTurnPenalty : rules.wrongTurnPenalty;
+    detective.reduceCredibility(penalty);
+}
+
+// evaluateEndConditions() inspects whether the round has concluded.
+// In Commit 9, checks LOSE condition: credibility reaches 0 OR turns used reach rules.maxTurns.
+// If lost, invokes finishGame(false) and returns true; otherwise returns false.
+bool GameEngine::evaluateEndConditions()
+{
+    if (detective.getCredibility() <= 0 || detective.getTurnsUsed() >= rules.maxTurns)
+    {
+        finishGame(false);
+        return true;
+    }
+    return false;
+}
+
+// finishGame() concludes the round, renders the final outcome banner,
+// reveals the secret culprit, appends the match record to the scoreboard,
+// clears the console screen, and resets the engine state to GameState::Menu.
+void GameEngine::finishGame(bool won)
+{
+    state = won ? GameState::Won : GameState::Lost;
+
+    std::string outcome = won ? "WIN!" : "LOSE!";
+    std::string resultLine = detective.getName() + " " + outcome;
+
+    // Identify the culprit's role and character name
+    std::string culpritRole = profiles[culpritColumn].culpritRole;
+    std::string culpritName = "";
+    for (int i = 0; i < CAST_SIZE; ++i)
+    {
+        if (cast[i] != nullptr && cast[i]->getIsCulprit())
+        {
+            culpritName = cast[i]->getName();
+            break;
+        }
+    }
+
+    std::cout << "\n";
+    std::cout << "+============================================================+\n";
+    std::cout << "|  " << resultLine;
+    int pad = 58 - static_cast<int>(resultLine.size());
+    if (pad < 0) pad = 0;
+    for (int i = 0; i < pad; ++i) { std::cout << " "; }
+    std::cout << "|\n";
+    std::cout << "+============================================================+\n";
+    std::cout << "\n";
+    std::cout << "  Final credibility: " << detective.getCredibility()
+              << " || Turns used: " << detective.getTurnsUsed()
+              << " || Culprit: " << culpritRole << " " << culpritName << "\n\n";
+
+    // Record match to ScoreBoard (associated)
+    if (scoreBoard != nullptr)
+    {
+        try
+        {
+            int turnsLeft = rules.maxTurns - detective.getTurnsUsed();
+            if (turnsLeft < 0) turnsLeft = 0;
+            scoreBoard->addScore(
+                detective.getName(),
+                won,
+                detective.getCredibility(),
+                turnsLeft,
+                culpritRole,
+                StringUtils::currentDateDDMMYY()
+            );
+        }
+        catch (const GameException& ex)
+        {
+            std::cout << "  [Warning] Could not record score: " << ex.getMessage() << "\n\n";
+        }
+        catch (...)
+        {
+            std::cout << "  [Warning] Could not record score.\n\n";
+        }
+    }
+
+    ConsoleUtils::readLine("  Press Enter to return to main menu...");
+    ConsoleUtils::clearScreen();
+    state = GameState::Menu;
+}
+
+// isCharacterInterviewed() reports whether character 1-8 was interviewed this round.
+bool GameEngine::isCharacterInterviewed(int characterNumber) const
+{
+    if (characterNumber < 1 || characterNumber > CAST_SIZE)
+    {
+        throw InvalidPositionException(characterNumber, CAST_SIZE);
+    }
+    return interviewed[characterNumber - 1];
+}
+
+// handleVisitLocation() displays the interactive mansion location menu,
+// handles user choice 0-7, prompts for search confirmation (unsearched / repeat),
+// invokes doVisit(), prints collected clue details, and checks game end conditions.
+void GameEngine::handleVisitLocation()
+{
+    while (state == GameState::Playing && !ConsoleUtils::isInputClosed())
+    {
+        std::cout << "\n";
+        std::cout << "+============================================================+\n";
+        std::cout << "|                   COTTAGE LOCATIONS                        |\n";
+        std::cout << "+============================================================+\n";
+        cottage.displayLocations(std::cout);
+        std::cout << "  [0] Back to game menu\n";
+
+        int locChoice = ConsoleUtils::readIntInRange("\n  Select a location to visit (0 to 7): ", 0, 7);
+
+        if (ConsoleUtils::isInputClosed() || locChoice == 0)
+        {
+            return; // Return to game menu without consuming turn
+        }
+
+        std::string placeName = cottage.getLocationName(locChoice);
+        bool alreadySearched = cottage.isLocationSearched(locChoice);
+
+        bool confirm = false;
+        if (!alreadySearched)
+        {
+            confirm = ConsoleUtils::readYesNo("  You have NOT searched " + placeName + " yet. Search?");
+        }
+        else
+        {
+            confirm = ConsoleUtils::readYesNo("  You have already searched " + placeName + ". Search again?");
+        }
+
+        if (ConsoleUtils::isInputClosed())
+        {
+            return;
+        }
+
+        if (!confirm)
+        {
+            // Declining returns to location menu without cost
+            continue;
+        }
+
+        // Execute visit action
+        Clue clue = doVisit(locChoice);
+
+        std::cout << "\n  Letter " << clue.clueLetter << " collected at position "
+                  << clue.cluePosition << " of Word 1.\n";
+        if (!alreadySearched)
+        {
+            std::cout << "  Letter has been placed.\n";
+        }
+
+        // Return to game menu and check end conditions
+        evaluateEndConditions();
+        return;
+    }
+}
+
+// handleInterviewPerson() displays the 8 household people with interview status,
+// handles user choice 0-8, prompts for interview confirmation, invokes doInterview(),
+// prints clue details or refusal message, and checks game end conditions.
+void GameEngine::handleInterviewPerson()
+{
+    while (state == GameState::Playing && !ConsoleUtils::isInputClosed())
+    {
+        std::cout << "\n";
+        std::cout << "+============================================================+\n";
+        std::cout << "|                 PEOPLE OF THE HOUSEHOLD                    |\n";
+        std::cout << "+============================================================+\n";
+        for (int i = 0; i < CAST_SIZE; ++i)
+        {
+            std::string nameFormatted = StringUtils::formatPersonName(cast[i]->getName());
+            std::string status = interviewed[i] ? "Interviewed" : "NOT Interviewed";
+            std::cout << "  [" << (i + 1) << "] " << nameFormatted
+                      << " (" << cast[i]->getRole() << ") - " << status << "\n";
+        }
+        std::cout << "  [0] Back to game menu\n";
+
+        int personChoice = ConsoleUtils::readIntInRange("\n  Select a person to interview (0 to 8): ", 0, 8);
+
+        if (ConsoleUtils::isInputClosed() || personChoice == 0)
+        {
+            return; // Return to game menu without consuming turn
+        }
+
+        int idx = personChoice - 1;
+        std::string personName = StringUtils::formatPersonName(cast[idx]->getName());
+        bool alreadyInterviewed = interviewed[idx];
+
+        bool confirm = false;
+        if (!alreadyInterviewed)
+        {
+            confirm = ConsoleUtils::readYesNo("  You have NOT interviewed " + personName + " yet. Interview?");
+        }
+        else
+        {
+            confirm = ConsoleUtils::readYesNo("  You have already interviewed " + personName + ". Interview again?");
+        }
+
+        if (ConsoleUtils::isInputClosed())
+        {
+            return;
+        }
+
+        if (!confirm)
+        {
+            // Declining returns to interview menu without cost
+            continue;
+        }
+
+        // Execute interview action
+        try
+        {
+            Clue clue = doInterview(personChoice);
+
+            std::cout << "\n  Letter " << clue.clueLetter << " collected at position "
+                      << clue.cluePosition << " of Word 2.\n";
+            if (!alreadyInterviewed)
+            {
+                std::cout << "  Letter has been placed.\n";
+            }
+        }
+        catch (const InterviewRestrictedException& ex)
+        {
+            std::cout << "\n  [Interview Refused] " << ex.getMessage() << "\n";
+        }
+
+        // Return to game menu and check end conditions
+        evaluateEndConditions();
+        return;
+    }
 }

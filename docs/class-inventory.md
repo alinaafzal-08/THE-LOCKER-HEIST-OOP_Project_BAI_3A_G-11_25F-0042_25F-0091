@@ -1,6 +1,6 @@
 # Class Inventory — The Locker Heist
 **Binding architecture contract.  Names, visibilities, and relationships here govern every commit.**
-Last updated: Commit 8 (Samreen Kousar, 25F-0091).
+Last updated: Commit 9 (Alina Afzal, 25F-0042).
 
 ---
 
@@ -109,6 +109,12 @@ Sole polymorphic construction hub based on role strings; throws `InvalidInputExc
   - `void run()`: Top-level menu loop (New Game, Leaderboard, About, Rules, Exit). Catches `GameException` gracefully without crashing.
   - `void beginRound(const std::string& detectiveName)`: Loads data files, validates consistency, selects culprit (forced or `rand() % 7`), constructs cast via `CharacterFactory`, sets `isCulprit` on the culprit suspect via friend access, builds Cottage and Scrabble models, initializes Detective.
   - `void setForcedCulprit(int oneToSeven)`: Sets predetermined culprit column (1=Cook ... 7=Child) for automated testing. Throws `InvalidInputException` for out-of-range values.
+  - `Clue doVisit(int locationNumber)`: Pure exploration logic without console I/O. First visit searches room, adds clue to detective rack, places tile on Scrabble board, consumes 1 turn. Repeat visit returns clue without re-placing and penalizes 1 turn and -5 credibility.
+  - `Clue doInterview(int characterNumber)`: Pure interview logic. Polymorphically checks `getMinimumCredibility()`; if below requirement, penalizes 1 turn and -5 cred and throws `InterviewRestrictedException`. First interview collects clue, places tile on Scrabble, marks interviewed, consumes 1 turn. Repeat interview returns clue and applies wrong step.
+  - `void applyWrongStep()`: Consumes 1 turn and applies magnitude of `wrongTurnPenalty` (-5 -> 5 points) to detective credibility.
+  - `bool evaluateEndConditions()`: Checks LOSE conditions (credibility <= 0 OR turns >= maxTurns) and invokes `finishGame(false)`.
+  - `void finishGame(bool won)`: Concludes round, prints result banner (`<Name> WIN!` or `<Name> LOSE!`), reveals culprit role and name, appends record to ScoreBoard, clears screen, and resets state to `GameState::Menu`.
+  - `bool isCharacterInterviewed(int characterNumber) const`: Status accessor for character interview state.
   - `static std::string sanitiseName(const std::string& raw, char spaceReplacement)`: Validates length (1-20), rejects pipe '|' and control characters, replaces spaces with user-chosen character.
   - `static RulesConfig loadRulesOrDefaults(const std::string& path, bool& usedDefaults)`: Loads rules or safely falls back to defaults on file missing/corrupt.
   - Getters: `getCulpritColumn()`, `getCharacter(i)`, `getScrabble()`, `getCottage()`, `getDetective()`, `getRules()`.
@@ -130,11 +136,6 @@ Sole polymorphic construction hub based on role strings; throws `InvalidInputExc
 | `TileRack` | Dynamic Container | `DynamicArray<Tile> tiles; DynamicArray<int> positions; int capacity;` <br> `TileRack(int cap); ~TileRack(); TileRack(const TileRack&); TileRack& operator=(const TileRack&);` <br> `addTile(); removeTile(); removeLast(); markPlaced(); isPlaced(); hasPosition(); getCapacity(); getCount(); isEmpty(); isFull(); clear(); display();` <br> `operator+(other); getClueText(); addRawTile(); friend operator<<;` | Refactored in C6 to use `DynamicArray<Tile>` and `DynamicArray<int>`. In C7, added `operator+` (custom selection sort by board position, separator space tile at pos 0, deep copy) and `getClueText()` for combined clue string. Friend of `GameEngine`. |
 | `Scrabble` | Dynamic Jagged Board | `DynamicArray<Tile> rows[2]; int rowLength[2]; std::string targetWord[2]; bool targetsLoaded;` <br> `Scrabble(); Scrabble(string w1, string w2); ~Scrabble(); Scrabble(const Scrabble&); Scrabble& operator=(const Scrabble&);` <br> `loadTargetWords(); placeLetter(); revealLetter(); verifyWord(); isRowComplete(); isComplete(); getRowLength(); getRowString(); display(); friend operator<<; friend operator>>;` | Refactored in C6 to two `DynamicArray<Tile>` rows (`rows[0]` resized to 7, `rows[1]` resized to 8). In C7, `placeLetter` uses `Tile::operator==`; added friend stream extraction `operator>>` and insertion `operator<<`. |
 | `Cottage` | Dynamic Container | `DynamicArray<Location> locations;` <br> `Cottage(); Cottage(const LocationRecord records[], int count, int culpritColumn); ~Cottage(); Cottage(const Cottage&); Cottage& operator=(const Cottage&);` <br> `getLocationCount(); isLocationSearched(num); searchLocation(num); getLocationClue(num); getLocationName(num); getSearchedCount(); allSearched(); displayLocations(); friend operator<<;` | Refactored in C6 to `DynamicArray<Location>` (stores `Location` structs by value). Original C5 raw dynamic pointer array `Location**` preserved in single-line comments. Aggregation relationship with `Location[]` (Decision R16). |
-
-### Scheduled for Commit 8
-| Class | Kind | Responsibility |
-|-------|------|---------------|
-| `GameEngine` | Singleton | Singleton; owns Detective, Cottage, Scrabble, combined-clue TileRack, 8 Character* |
 
 ---
 

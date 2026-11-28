@@ -27,6 +27,7 @@
 +============================================================+
 
 
+--- TURN 1 ---
 ------------------------------------------------------------
   Credibility: 100  |  Turns used: 0
 ------------------------------------------------------------
@@ -38,10 +39,19 @@ Word 1: [ ] [ ] [ ] [ ] [ ] [ ] [ ]
 Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
 
   What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
     [3] View Scrabble Board
     [6] Quit to main menu
 
-  Choice:   Quit to main menu? No score will be recorded. (y/n): 
+  Choice:   Quit to main menu? The game will be recorded as LOSE. (y/n): 
++============================================================+
+|  DetectiveSamreen LOSE!                                    |
++============================================================+
+
+  Final credibility: 100 || Turns used: 0 || Culprit: Partner 1 Ms.Ruslana
+
+  Press Enter to return to main menu...
 +============================================================+
 |                      MAIN MENU                             |
 +============================================================+

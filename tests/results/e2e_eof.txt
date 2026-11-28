@@ -17,4 +17,6 @@
     [4] Rules
     [5] Exit
 
+  Choice:   Invalid input. Please enter a number between 1 and 5.
+
   Choice: 

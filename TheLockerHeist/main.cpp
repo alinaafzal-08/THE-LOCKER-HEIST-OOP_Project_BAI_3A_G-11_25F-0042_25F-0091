@@ -1,14 +1,14 @@
 // ============================================================
 // main.cpp  --  THE LOCKER HEIST
-// Driver and self-test harness for Commit 8.
+// Driver and self-test harness for Commit 9.
 //
 // Operating modes:
-//   heist.exe               -- Full game: main menu, New Game, Leaderboard,
-//                              About, Rules, Exit via GameEngine singleton.
-//   heist.exe --selftest    -- Runs ST-01 through ST-08 and exits 0 on
+//   heist.exe               -- Full interactive game loop via GameEngine singleton
+//                              with location exploration and suspect interviews.
+//   heist.exe --selftest    -- Runs ST-01 through ST-09 and exits 0 on
 //                              all-pass, 1 on any failure.
-//   heist.exe --culprit N   -- Same as normal game but culprit is forced
-//                              to column N (1=Cook...7=Child) for testing.
+//   heist.exe --culprit N   -- Runs game forcing suspect N (1=Cook...7=Child)
+//                              as culprit for deterministic testing.
 // ============================================================
 
 #include "heist.h"
@@ -1945,6 +1945,253 @@ static int runGameEngineSelfTest()
 }
 
 // ------------------------------------------------------------
+// runExplorationSelfTest()  --  ST-09 (Commit 9)
+// ------------------------------------------------------------
+static int runExplorationSelfTest()
+{
+    int passed = 0;
+    int failed = 0;
+
+    std::cout << "\n========================================\n";
+    std::cout << "  ST-09  Exploration & Turn/Credibility Self-Test\n";
+    std::cout << "========================================\n";
+
+    // Use a temporary scoreboard file for self-tests -- never touch authentic file
+    const std::string tempSBPath = "temp_scoreboard_st09.txt";
+    std::remove(tempSBPath.c_str());
+    ScoreBoard tempSB(tempSBPath);
+
+    GameEngine& engine = GameEngine::getInstance();
+    engine.attachScoreBoard(&tempSB);
+
+    // 1. All 15 distinct clues collected (7 locations + 8 characters, Victim first)
+    // Forced culprit 1 (Cook: Word1="ALFREDO", Word2="SPAGHETI")
+    engine.setForcedCulprit(1);
+    engine.beginRound("Alina_Tester");
+
+    // Interview Victim first (character 1, Mr. Leonardo, requires 80 credibility)
+    Clue cVictim = engine.doInterview(1);
+    check(cVictim.clueRow == WordRow::Word2 && cVictim.cluePosition == 1,
+          "ST-09: Victim interview returns Word 2 position 1 clue", passed, failed);
+
+    // Interview remaining 7 characters (2 to 8)
+    for (int ch = 2; ch <= GameEngine::CAST_SIZE; ++ch)
+    {
+        engine.doInterview(ch);
+    }
+
+    // Visit all 7 locations (1 to 7)
+    for (int loc = 1; loc <= DataLoader::LOCATION_COUNT; ++loc)
+    {
+        engine.doVisit(loc);
+    }
+
+    check(engine.getDetective().getTurnsUsed() == 15,
+          "ST-09: 15 distinct clues collected in exactly 15 turns", passed, failed);
+    check(engine.getDetective().getCredibility() == 100,
+          "ST-09: Credibility remains 100 after 15 successful unique actions", passed, failed);
+    check(engine.getScrabble().isComplete(),
+          "ST-09: Scrabble board complete for both Word 1 and Word 2", passed, failed);
+    check(engine.getScrabble().isRowComplete(WordRow::Word1),
+          "ST-09: Word 1 row is complete (7 letters)", passed, failed);
+    check(engine.getScrabble().isRowComplete(WordRow::Word2),
+          "ST-09: Word 2 row is complete (8 letters)", passed, failed);
+
+    // 2. Repeated visit costs 1 turn and 5 credibility, does not re-place
+    Clue repeatLocClue = engine.doVisit(1);
+    check(engine.getDetective().getTurnsUsed() == 16,
+          "ST-09: Repeated location visit increments turns used to 16", passed, failed);
+    check(engine.getDetective().getCredibility() == 95,
+          "ST-09: Repeated location visit penalizes credibility by 5 to 95", passed, failed);
+    check(repeatLocClue.cluePosition == 1,
+          "ST-09: Repeated location visit returns valid existing clue without re-placement error", passed, failed);
+
+    // 3. Repeated interview costs 1 turn and 5 credibility, does not re-place
+    Clue repeatCharClue = engine.doInterview(2);
+    check(engine.getDetective().getTurnsUsed() == 17,
+          "ST-09: Repeated character interview increments turns used to 17", passed, failed);
+    check(engine.getDetective().getCredibility() == 90,
+          "ST-09: Repeated character interview penalizes credibility by 5 to 90", passed, failed);
+    check(repeatCharClue.cluePosition == 2,
+          "ST-09: Repeated interview returns valid existing clue without re-placement error", passed, failed);
+
+    // 4. Interview credibility thresholds & InterviewRestrictedException
+    // Start a fresh round with 100 credibility
+    engine.beginRound("Alina_Tester");
+
+    // Reduce credibility to 75 (apply 5 wrong steps: 100 -> 75)
+    for (int i = 0; i < 5; ++i)
+    {
+        engine.applyWrongStep();
+    }
+    check(engine.getDetective().getCredibility() == 75,
+          "ST-09: Credibility reduced to 75 after 5 wrong steps", passed, failed);
+
+    // Test Victim threshold: requires 80 (current 75 < 80)
+    bool caughtVictim = false;
+    try
+    {
+        engine.doInterview(1); // Victim
+    }
+    catch (const InterviewRestrictedException&)
+    {
+        caughtVictim = true;
+    }
+    check(caughtVictim,
+          "ST-09: Interview with Victim at credibility 75 throws InterviewRestrictedException (requires 80)", passed, failed);
+    check(engine.getDetective().getCredibility() == 70,
+          "ST-09: Refused interview applies wrong-step penalty reducing credibility to 70", passed, failed);
+    check(engine.getDetective().getTurnsUsed() == 6,
+          "ST-09: Refused interview consumes 1 turn (turns used = 6)", passed, failed);
+
+    // Test Child threshold: requires 75 (current 70 < 75)
+    bool caughtChild = false;
+    try
+    {
+        engine.doInterview(5); // Child (character 5)
+    }
+    catch (const InterviewRestrictedException&)
+    {
+        caughtChild = true;
+    }
+    check(caughtChild,
+          "ST-09: Interview with Child at credibility 70 throws InterviewRestrictedException (requires 75)", passed, failed);
+    check(engine.getDetective().getCredibility() == 65,
+          "ST-09: Refused Child interview penalizes credibility to 65", passed, failed);
+
+    // Reduce credibility below 50 to test Partners (characters 6 and 7, require 50)
+    // Current cred = 65 -> apply 4 wrong steps -> cred = 45
+    for (int i = 0; i < 4; ++i)
+    {
+        engine.applyWrongStep();
+    }
+    check(engine.getDetective().getCredibility() == 45,
+          "ST-09: Credibility reduced to 45", passed, failed);
+
+    bool caughtP1 = false;
+    try
+    {
+        engine.doInterview(6); // Partner 1
+    }
+    catch (const InterviewRestrictedException&)
+    {
+        caughtP1 = true;
+    }
+    check(caughtP1,
+          "ST-09: Interview with Partner 1 below 50 throws InterviewRestrictedException", passed, failed);
+
+    bool caughtP2 = false;
+    try
+    {
+        engine.doInterview(7); // Partner 2
+    }
+    catch (const InterviewRestrictedException&)
+    {
+        caughtP2 = true;
+    }
+    check(caughtP2,
+          "ST-09: Interview with Partner 2 below 50 throws InterviewRestrictedException", passed, failed);
+
+    // Credibility is now 35 (from 45 - 5 - 5 = 35). Reduce to 30 to test PA (requires 35)
+    engine.applyWrongStep();
+    check(engine.getDetective().getCredibility() == 30,
+          "ST-09: Credibility reduced to 30", passed, failed);
+
+    bool caughtPA = false;
+    try
+    {
+        engine.doInterview(8); // PA
+    }
+    catch (const InterviewRestrictedException&)
+    {
+        caughtPA = true;
+    }
+    check(caughtPA,
+          "ST-09: Interview with PA below 35 throws InterviewRestrictedException", passed, failed);
+
+    // Test House Help always allowed (Cook=2, Guard=3, Servant=4, minCred 0)
+    // Credibility is now 25 (> 0)
+    bool houseHelpPassed = true;
+    try
+    {
+        engine.doInterview(2); // Cook
+        engine.doInterview(3); // Guard
+        engine.doInterview(4); // Servant
+    }
+    catch (...)
+    {
+        houseHelpPassed = false;
+    }
+    check(houseHelpPassed,
+          "ST-09: House Help (Cook, Guard, Servant) interviews succeed with zero threshold", passed, failed);
+
+    // 5. Credibility never negative, LOSE triggered by credibility 0
+    while (engine.getDetective().getCredibility() > 0)
+    {
+        engine.applyWrongStep();
+    }
+    check(engine.getDetective().getCredibility() == 0,
+          "ST-09: Credibility reaches exactly 0", passed, failed);
+
+    // Additional wrong steps cannot make credibility negative
+    engine.applyWrongStep();
+    check(engine.getDetective().getCredibility() == 0,
+          "ST-09: Credibility remains clamped at 0 and never goes negative", passed, failed);
+
+    bool loseOnZero = engine.evaluateEndConditions();
+    check(loseOnZero,
+          "ST-09: evaluateEndConditions() triggers LOSE when credibility reaches 0", passed, failed);
+
+    // 6. LOSE triggered by turns used reaching maximum (25)
+    engine.beginRound("Alina_Tester");
+    check(!engine.evaluateEndConditions(),
+          "ST-09: evaluateEndConditions() returns false at game start", passed, failed);
+
+    for (int t = 0; t < 25; ++t)
+    {
+        engine.getDetective().addTurn();
+    }
+    check(engine.getDetective().getTurnsUsed() == 25,
+          "ST-09: Turns used reached maximum (25)", passed, failed);
+    bool loseOnTurns = engine.evaluateEndConditions();
+    check(loseOnTurns,
+          "ST-09: evaluateEndConditions() triggers LOSE when turns used reach maxTurns (25)", passed, failed);
+
+    // 7. Viewing the board changes nothing (free action)
+    engine.beginRound("Alina_Tester");
+    int turnsBefore = engine.getDetective().getTurnsUsed();
+    int credBefore  = engine.getDetective().getCredibility();
+    const Scrabble& sc = engine.getScrabble();
+    bool completeCheck = sc.isComplete();
+    check(engine.getDetective().getTurnsUsed() == turnsBefore &&
+          engine.getDetective().getCredibility() == credBefore &&
+          !completeCheck,
+          "ST-09: Viewing Scrabble board state consumes zero turns and zero credibility", passed, failed);
+
+    // 8. Verify scoreboard file was written with LOSE row
+    std::ifstream sbIn(tempSBPath);
+    std::string sbContent = "";
+    std::string sbLine;
+    while (std::getline(sbIn, sbLine))
+    {
+        sbContent += sbLine + "\n";
+    }
+    sbIn.close();
+    check(sbContent.find("Alina_Tester|LOSE|") != std::string::npos,
+          "ST-09: finishGame recorded valid LOSE row to scoreboard", passed, failed);
+
+    // Clean up temporary files and singleton instance
+    std::remove(tempSBPath.c_str());
+    GameEngine::destroyInstance();
+
+    std::cout << "----------------------------------------\n";
+    std::cout << "  Result: " << passed << " passed, " << failed << " failed.\n";
+    std::cout << "========================================\n\n";
+
+    return failed;
+}
+
+// ------------------------------------------------------------
 // main()
 // ------------------------------------------------------------
 int main(int argc, char* argv[])
@@ -1952,6 +2199,7 @@ int main(int argc, char* argv[])
     // Execute automated self-tests if --selftest argument is passed
     if (argc >= 2 && std::string(argv[1]) == "--selftest")
     {
+        ConsoleUtils::setSelfTestMode(true);
         int totalFailures = 0;
         totalFailures += runFoundationSelfTest();
         totalFailures += runDataLoaderSelfTest();
@@ -1961,6 +2209,7 @@ int main(int argc, char* argv[])
         totalFailures += runDynamicArraySelfTest();
         totalFailures += runScoreBoardAndOperatorsSelfTest();
         totalFailures += runGameEngineSelfTest();
+        totalFailures += runExplorationSelfTest();
         return (totalFailures > 0) ? 1 : 0;
     }
 

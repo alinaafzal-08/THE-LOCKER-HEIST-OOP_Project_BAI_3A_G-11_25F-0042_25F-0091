@@ -101,13 +101,19 @@ The-Locker-Heist-OOP-Project\
     │   ├── e2e01_menu.txt
     │   ├── e2e02_name_validation.txt
     │   ├── e2e03_quit.txt
+    │   ├── e2e04_location.txt
+    │   ├── e2e05_interview.txt
+    │   ├── e2e06_credibility_restrictions.txt
+    │   ├── e2e07_collection_display.txt
+    │   ├── e2e11_lose_credibility.txt
+    │   ├── e2e12_lose_turns.txt
+    │   ├── e2e13_turn_credibility_board.txt
+    │   ├── e2e18_quit_lose.txt
     │   └── e2e_eof.txt
     └── results\
         ├── .gitkeep                   # keeps results folder in version control
         ├── selftest.txt               # logged self-test run output
-        ├── e2e01_menu.txt             # logged E2E-01 menu navigation output
-        ├── e2e02_name_validation.txt  # logged E2E-02 name validation output
-        └── e2e03_culprit*.txt         # logged E2E-03 culprit runs output
+        └── e2e*.txt                   # logged E2E automated test run outputs
 ```
 
 ---
@@ -150,11 +156,12 @@ generated code. The team is fully responsible for the final submission.
 | **ST-06** | Module 8 (DynamicArray<T> generic container, auto-doubling, deep copy, refactored TileRack/Scrabble/Cottage) | 29 / 29 PASS |
 | **ST-07** | Module 6 & 11 (ScoreBoard persistence & ASCII table, equality operators, TileRack::operator+ with selection sort & clue text, friend stream operators) | 41 / 41 PASS |
 | **ST-08** | Module 2 & 12 (GameEngine Singleton, forced culprit setup 1-7, cast construction, Cottage & Scrabble target synchronization, sanitiseName, loadRulesOrDefaults) | 77 / 77 PASS |
-| **E2E Tests** | Automated end-to-end flow tests (E2E-01 menu nav, E2E-02 name validation, E2E-03 culprit 1-7 round starts, EOF handling, CLI validation) | 11 / 11 PASS |
+| **ST-09** | Module 13 & 14 (Exploration, Location Visits, Suspect Interviews, Polymorphic Minimum Credibility Thresholds, Turn & Credibility Penalties, LOSE Conditions) | 32 / 32 PASS |
+| **E2E Tests** | Automated end-to-end flow tests (E2E-01 to E2E-07, E2E-11 to E2E-14, E2E-18, EOF handling, CLI validation) | 20 / 20 PASS |
 
 ---
 
 ## Known Limitations
 
 - Visual Studio MSVC is not yet installed on this workstation environment; automated tests run through `g++` (C++17) during local testing, producing identical standard-compliant behavior.
-- In-game investigation actions ([1] Search Location, [2] Interview Suspect, [4] Solve Word, [5] Accuse) are scheduled for Commits 9–11. Commit 8 provides full main menu navigation, New Game set-up with random/forced culprit, view board [3], and quit [6].
+- Word solving ([4] Form a Word) and formal accusations ([5] Accuse Culprit / WIN condition) arrive in Commit 10. Commit 9 delivers location visits, suspect interviews with credibility thresholds, turn counting, credibility penalties, and game-over LOSE handling.

@@ -216,7 +216,7 @@ if (Test-Path $heistExe) {
         "Your name contains spaces",
         "A culprit has been secretly chosen. The game begins!",
         "Credibility: 100",
-        "Quit to main menu? No score will be recorded",
+        "Quit to main menu? The game will be recorded as LOSE.",
         "Goodbye"
     )
 
@@ -224,10 +224,112 @@ if (Test-Path $heistExe) {
     for ($c = 1; $c -le 7; $c++) {
         Run-E2E "e2e03_culprit$c" "e2e03_quit.txt" "--culprit $c" @(
             "A culprit has been secretly chosen. The game begins!",
-            "Quit to main menu? No score will be recorded",
+            "Quit to main menu? The game will be recorded as LOSE.",
             "Goodbye"
         )
     }
+
+    # E2E-04: Location visit (first search, repeat-N, repeat-Y, [0] Back)
+    Run-E2E "e2e04_location" "e2e04_location.txt" "--culprit 1" @(
+        "COTTAGE LOCATIONS",
+        "You have NOT searched Bedroom 1 yet",
+        "Letter has been placed.",
+        "You have already searched Bedroom 1. Search again?",
+        "Letter A collected at position 1 of Word 1.",
+        "Credibility: 95",
+        "Alina LOSE!"
+    )
+
+    # E2E-05: Interview suspect (first interview, repeat-N, repeat-Y, [0] Back)
+    Run-E2E "e2e05_interview" "e2e05_interview.txt" "--culprit 1" @(
+        "PEOPLE OF THE HOUSEHOLD",
+        "You have NOT interviewed Mr. Enzo yet",
+        "Letter has been placed.",
+        "You have already interviewed Mr. Enzo. Interview again?",
+        "Letter P collected at position 2 of Word 2.",
+        "Credibility: 95",
+        "Alina LOSE!"
+    )
+
+    # E2E-06: Interview credibility restrictions (polymorphic minimum thresholds)
+    Run-E2E "e2e06_credibility_restrictions" "e2e06_credibility_restrictions.txt" "--culprit 1" @(
+        "Interview with Mr.Leonardo restricted: requires 80 credibility",
+        "Interview with Ms.Celine restricted: requires 75 credibility",
+        "Interview with Ms.Ruslana restricted: requires 50 credibility",
+        "Interview with Mr.Dmitry restricted: requires 50 credibility",
+        "Interview with Mr.Jad restricted: requires 35 credibility",
+        "Letter P collected at position 2 of Word 2."
+    )
+
+    # E2E-07: Clue collection, TileRack and Scrabble board display
+    Run-E2E "e2e07_collection_display" "e2e07_collection_display.txt" "--culprit 1" @(
+        "Rack 1 (Locations):",
+        "Rack 2 (People):",
+        "Scrabble Board:",
+        "Current Scrabble Board:"
+    )
+
+    # E2E-11: Game over LOSE triggered by credibility reaching zero
+    Run-E2E "e2e11_lose_credibility" "e2e11_lose_credibility.txt" "--culprit 1" @(
+        "Alina LOSE!",
+        "Final credibility: 0"
+    )
+
+    # E2E-12: Game over LOSE triggered by turns reaching maximum (25)
+    Run-E2E "e2e12_lose_turns" "e2e12_lose_turns.txt" "--culprit 1" @(
+        "Alina LOSE!",
+        "Turns used: 25"
+    )
+
+    # E2E-13: Turn and credibility arithmetic with free board view
+    Run-E2E "e2e13_turn_credibility_board" "e2e13_turn_credibility_board.txt" "--culprit 1" @(
+        "--- TURN 1 ---",
+        "--- TURN 2 ---",
+        "Credibility: 100"
+    )
+
+    # E2E-14: ScoreBoard match entry format verification
+    Write-Host "  Running e2e14_scoreboard_format..."
+    $scoreBoardFile = Join-Path $projDir "leader\scoreBoard.txt"
+    $scoreBoardBak  = Join-Path $projDir "leader\scoreBoard.txt.bak"
+    $hasBackup = $false
+    if (Test-Path $scoreBoardFile) {
+        Copy-Item $scoreBoardFile $scoreBoardBak -Force
+        $hasBackup = $true
+    }
+    $e2e14Passed = $true
+    Push-Location $projDir
+    try {
+        $input14 = Join-Path $PSScriptRoot "inputs\e2e18_quit_lose.txt"
+        Get-Content $input14 | & $heistExe 2>&1 | Out-Null
+        $lines = Get-Content $scoreBoardFile
+        $lastRow = $lines[-1]
+        if ($lastRow -match "^Alina\|LOSE\|\d+\|\d{2}\|.+?\|\d{2}-\d{2}-\d{2}$") {
+            Write-Host "  [PASS] e2e14_scoreboard_format: valid match row '$lastRow'" -ForegroundColor Green
+        } else {
+            Write-Host "  [FAIL] e2e14_scoreboard_format: unexpected row '$lastRow'" -ForegroundColor Red
+            $e2e14Passed = $false
+            $overallFailed++
+        }
+    }
+    catch {
+        Write-Host "  [FAIL] e2e14_scoreboard_format threw exception: $_" -ForegroundColor Red
+        $e2e14Passed = $false
+        $overallFailed++
+    }
+    finally {
+        Pop-Location
+        if ($hasBackup -and (Test-Path $scoreBoardBak)) {
+            Copy-Item $scoreBoardBak $scoreBoardFile -Force
+            Remove-Item $scoreBoardBak -Force
+        }
+    }
+
+    # E2E-18: Quit mid-game records LOSE row
+    Run-E2E "e2e18_quit_lose" "e2e18_quit_lose.txt" "" @(
+        "Quit to main menu? The game will be recorded as LOSE.",
+        "Alina LOSE!"
+    )
 
     # EOF handling: immediate EOF exits cleanly without hanging
     Run-E2E "e2e_eof" "e2e_eof.txt" "" @(

@@ -443,3 +443,77 @@ Rack 2 (People): Rack: [A@1] [B@2] [C@3] [D@4] [E@5] [F@6] [G@7] [H@8]
   Result: 77 passed, 0 failed.
 ========================================
 
+
+========================================
+  ST-09  Exploration & Turn/Credibility Self-Test
+========================================
+
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+  [PASS] ST-09: Victim interview returns Word 2 position 1 clue
+  [PASS] ST-09: 15 distinct clues collected in exactly 15 turns
+  [PASS] ST-09: Credibility remains 100 after 15 successful unique actions
+  [PASS] ST-09: Scrabble board complete for both Word 1 and Word 2
+  [PASS] ST-09: Word 1 row is complete (7 letters)
+  [PASS] ST-09: Word 2 row is complete (8 letters)
+  [PASS] ST-09: Repeated location visit increments turns used to 16
+  [PASS] ST-09: Repeated location visit penalizes credibility by 5 to 95
+  [PASS] ST-09: Repeated location visit returns valid existing clue without re-placement error
+  [PASS] ST-09: Repeated character interview increments turns used to 17
+  [PASS] ST-09: Repeated character interview penalizes credibility by 5 to 90
+  [PASS] ST-09: Repeated interview returns valid existing clue without re-placement error
+
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+  [PASS] ST-09: Credibility reduced to 75 after 5 wrong steps
+  [PASS] ST-09: Interview with Victim at credibility 75 throws InterviewRestrictedException (requires 80)
+  [PASS] ST-09: Refused interview applies wrong-step penalty reducing credibility to 70
+  [PASS] ST-09: Refused interview consumes 1 turn (turns used = 6)
+  [PASS] ST-09: Interview with Child at credibility 70 throws InterviewRestrictedException (requires 75)
+  [PASS] ST-09: Refused Child interview penalizes credibility to 65
+  [PASS] ST-09: Credibility reduced to 45
+  [PASS] ST-09: Interview with Partner 1 below 50 throws InterviewRestrictedException
+  [PASS] ST-09: Interview with Partner 2 below 50 throws InterviewRestrictedException
+  [PASS] ST-09: Credibility reduced to 30
+  [PASS] ST-09: Interview with PA below 35 throws InterviewRestrictedException
+  [PASS] ST-09: House Help (Cook, Guard, Servant) interviews succeed with zero threshold
+  [PASS] ST-09: Credibility reaches exactly 0
+  [PASS] ST-09: Credibility remains clamped at 0 and never goes negative
+
++============================================================+
+|  Alina_Tester LOSE!                                        |
++============================================================+
+
+  Final credibility: 0 || Turns used: 24 || Culprit: Cook Mr.Enzo
+
+  [PASS] ST-09: evaluateEndConditions() triggers LOSE when credibility reaches 0
+
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+  [PASS] ST-09: evaluateEndConditions() returns false at game start
+  [PASS] ST-09: Turns used reached maximum (25)
+
++============================================================+
+|  Alina_Tester LOSE!                                        |
++============================================================+
+
+  Final credibility: 100 || Turns used: 25 || Culprit: Cook Mr.Enzo
+
+  [PASS] ST-09: evaluateEndConditions() triggers LOSE when turns used reach maxTurns (25)
+
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+  [PASS] ST-09: Viewing Scrabble board state consumes zero turns and zero credibility
+  [PASS] ST-09: finishGame recorded valid LOSE row to scoreboard
+----------------------------------------
+  Result: 32 passed, 0 failed.
+========================================
+

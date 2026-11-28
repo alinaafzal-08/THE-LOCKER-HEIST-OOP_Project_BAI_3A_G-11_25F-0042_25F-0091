@@ -1,0 +1,635 @@
+﻿
++============================================================+
+|              THE LOCKER HEIST                              |
++============================================================+
+
+  A priceless artefact has been stolen from the mansion of
+  Mr. Leonardo. Seven suspects live under the same roof.
+  Only one of them is the culprit -- and you must find out who.
+
+
++============================================================+
+|                      MAIN MENU                             |
++============================================================+
+    [1] New Game
+    [2] View Leaderboard
+    [3] About
+    [4] Rules
+    [5] Exit
+
+  Choice: 
++============================================================+
+|                      NEW GAME                              |
++============================================================+
+  Enter your detective name: 
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+
+--- TURN 1 ---
+------------------------------------------------------------
+  Credibility: 100  |  Turns used: 0
+------------------------------------------------------------
+Rack 1 (Locations): Rack: (empty)
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                   COTTAGE LOCATIONS                        |
++============================================================+
+[1] Bedroom 1 - NOT Searched
+[2] Bedroom 2 - NOT Searched
+[3] Study Room - NOT Searched
+[4] Garden - NOT Searched
+[5] Kitchen - NOT Searched
+[6] Dining Room - NOT Searched
+[7] Living Room - NOT Searched
+  [0] Back to game menu
+
+  Select a location to visit (0 to 7):   You have NOT searched Bedroom 1 yet. Search? (y/n): 
+  Letter A collected at position 1 of Word 1.
+  Letter has been placed.
+
+--- TURN 2 ---
+------------------------------------------------------------
+  Credibility: 100  |  Turns used: 1
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                   COTTAGE LOCATIONS                        |
++============================================================+
+[1] Bedroom 1 - Searched
+[2] Bedroom 2 - NOT Searched
+[3] Study Room - NOT Searched
+[4] Garden - NOT Searched
+[5] Kitchen - NOT Searched
+[6] Dining Room - NOT Searched
+[7] Living Room - NOT Searched
+  [0] Back to game menu
+
+  Select a location to visit (0 to 7):   You have already searched Bedroom 1. Search again? (y/n): 
+  Letter A collected at position 1 of Word 1.
+
+--- TURN 3 ---
+------------------------------------------------------------
+  Credibility: 95  |  Turns used: 2
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                   COTTAGE LOCATIONS                        |
++============================================================+
+[1] Bedroom 1 - Searched
+[2] Bedroom 2 - NOT Searched
+[3] Study Room - NOT Searched
+[4] Garden - NOT Searched
+[5] Kitchen - NOT Searched
+[6] Dining Room - NOT Searched
+[7] Living Room - NOT Searched
+  [0] Back to game menu
+
+  Select a location to visit (0 to 7):   You have already searched Bedroom 1. Search again? (y/n): 
+  Letter A collected at position 1 of Word 1.
+
+--- TURN 4 ---
+------------------------------------------------------------
+  Credibility: 90  |  Turns used: 3
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                   COTTAGE LOCATIONS                        |
++============================================================+
+[1] Bedroom 1 - Searched
+[2] Bedroom 2 - NOT Searched
+[3] Study Room - NOT Searched
+[4] Garden - NOT Searched
+[5] Kitchen - NOT Searched
+[6] Dining Room - NOT Searched
+[7] Living Room - NOT Searched
+  [0] Back to game menu
+
+  Select a location to visit (0 to 7):   You have already searched Bedroom 1. Search again? (y/n): 
+  Letter A collected at position 1 of Word 1.
+
+--- TURN 5 ---
+------------------------------------------------------------
+  Credibility: 85  |  Turns used: 4
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                   COTTAGE LOCATIONS                        |
++============================================================+
+[1] Bedroom 1 - Searched
+[2] Bedroom 2 - NOT Searched
+[3] Study Room - NOT Searched
+[4] Garden - NOT Searched
+[5] Kitchen - NOT Searched
+[6] Dining Room - NOT Searched
+[7] Living Room - NOT Searched
+  [0] Back to game menu
+
+  Select a location to visit (0 to 7):   You have already searched Bedroom 1. Search again? (y/n): 
+  Letter A collected at position 1 of Word 1.
+
+--- TURN 6 ---
+------------------------------------------------------------
+  Credibility: 80  |  Turns used: 5
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                   COTTAGE LOCATIONS                        |
++============================================================+
+[1] Bedroom 1 - Searched
+[2] Bedroom 2 - NOT Searched
+[3] Study Room - NOT Searched
+[4] Garden - NOT Searched
+[5] Kitchen - NOT Searched
+[6] Dining Room - NOT Searched
+[7] Living Room - NOT Searched
+  [0] Back to game menu
+
+  Select a location to visit (0 to 7):   You have already searched Bedroom 1. Search again? (y/n): 
+  Letter A collected at position 1 of Word 1.
+
+--- TURN 7 ---
+------------------------------------------------------------
+  Credibility: 75  |  Turns used: 6
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                 PEOPLE OF THE HOUSEHOLD                    |
++============================================================+
+  [1] Mr. Leonardo (Victim) - NOT Interviewed
+  [2] Mr. Enzo (Cook) - NOT Interviewed
+  [3] Mr. Lukas (Guard) - NOT Interviewed
+  [4] Mr. Toby (Servant) - NOT Interviewed
+  [5] Ms. Celine (Child) - NOT Interviewed
+  [6] Ms. Ruslana (Partner 1) - NOT Interviewed
+  [7] Mr. Dmitry (Partner 2) - NOT Interviewed
+  [8] Mr. Jad (PA) - NOT Interviewed
+  [0] Back to game menu
+
+  Select a person to interview (0 to 8):   You have NOT interviewed Mr. Leonardo yet. Interview? (y/n): 
+  [Interview Refused] Interview with Mr.Leonardo restricted: requires 80 credibility, current is 70
+
+--- TURN 8 ---
+------------------------------------------------------------
+  Credibility: 70  |  Turns used: 7
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                 PEOPLE OF THE HOUSEHOLD                    |
++============================================================+
+  [1] Mr. Leonardo (Victim) - NOT Interviewed
+  [2] Mr. Enzo (Cook) - NOT Interviewed
+  [3] Mr. Lukas (Guard) - NOT Interviewed
+  [4] Mr. Toby (Servant) - NOT Interviewed
+  [5] Ms. Celine (Child) - NOT Interviewed
+  [6] Ms. Ruslana (Partner 1) - NOT Interviewed
+  [7] Mr. Dmitry (Partner 2) - NOT Interviewed
+  [8] Mr. Jad (PA) - NOT Interviewed
+  [0] Back to game menu
+
+  Select a person to interview (0 to 8):   You have NOT interviewed Ms. Celine yet. Interview? (y/n): 
+  [Interview Refused] Interview with Ms.Celine restricted: requires 75 credibility, current is 65
+
+--- TURN 9 ---
+------------------------------------------------------------
+  Credibility: 65  |  Turns used: 8
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                   COTTAGE LOCATIONS                        |
++============================================================+
+[1] Bedroom 1 - Searched
+[2] Bedroom 2 - NOT Searched
+[3] Study Room - NOT Searched
+[4] Garden - NOT Searched
+[5] Kitchen - NOT Searched
+[6] Dining Room - NOT Searched
+[7] Living Room - NOT Searched
+  [0] Back to game menu
+
+  Select a location to visit (0 to 7):   You have already searched Bedroom 1. Search again? (y/n): 
+  Letter A collected at position 1 of Word 1.
+
+--- TURN 10 ---
+------------------------------------------------------------
+  Credibility: 60  |  Turns used: 9
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                   COTTAGE LOCATIONS                        |
++============================================================+
+[1] Bedroom 1 - Searched
+[2] Bedroom 2 - NOT Searched
+[3] Study Room - NOT Searched
+[4] Garden - NOT Searched
+[5] Kitchen - NOT Searched
+[6] Dining Room - NOT Searched
+[7] Living Room - NOT Searched
+  [0] Back to game menu
+
+  Select a location to visit (0 to 7):   You have already searched Bedroom 1. Search again? (y/n): 
+  Letter A collected at position 1 of Word 1.
+
+--- TURN 11 ---
+------------------------------------------------------------
+  Credibility: 55  |  Turns used: 10
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                   COTTAGE LOCATIONS                        |
++============================================================+
+[1] Bedroom 1 - Searched
+[2] Bedroom 2 - NOT Searched
+[3] Study Room - NOT Searched
+[4] Garden - NOT Searched
+[5] Kitchen - NOT Searched
+[6] Dining Room - NOT Searched
+[7] Living Room - NOT Searched
+  [0] Back to game menu
+
+  Select a location to visit (0 to 7):   You have already searched Bedroom 1. Search again? (y/n): 
+  Letter A collected at position 1 of Word 1.
+
+--- TURN 12 ---
+------------------------------------------------------------
+  Credibility: 50  |  Turns used: 11
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                   COTTAGE LOCATIONS                        |
++============================================================+
+[1] Bedroom 1 - Searched
+[2] Bedroom 2 - NOT Searched
+[3] Study Room - NOT Searched
+[4] Garden - NOT Searched
+[5] Kitchen - NOT Searched
+[6] Dining Room - NOT Searched
+[7] Living Room - NOT Searched
+  [0] Back to game menu
+
+  Select a location to visit (0 to 7):   You have already searched Bedroom 1. Search again? (y/n): 
+  Letter A collected at position 1 of Word 1.
+
+--- TURN 13 ---
+------------------------------------------------------------
+  Credibility: 45  |  Turns used: 12
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                 PEOPLE OF THE HOUSEHOLD                    |
++============================================================+
+  [1] Mr. Leonardo (Victim) - NOT Interviewed
+  [2] Mr. Enzo (Cook) - NOT Interviewed
+  [3] Mr. Lukas (Guard) - NOT Interviewed
+  [4] Mr. Toby (Servant) - NOT Interviewed
+  [5] Ms. Celine (Child) - NOT Interviewed
+  [6] Ms. Ruslana (Partner 1) - NOT Interviewed
+  [7] Mr. Dmitry (Partner 2) - NOT Interviewed
+  [8] Mr. Jad (PA) - NOT Interviewed
+  [0] Back to game menu
+
+  Select a person to interview (0 to 8):   You have NOT interviewed Ms. Ruslana yet. Interview? (y/n): 
+  [Interview Refused] Interview with Ms.Ruslana restricted: requires 50 credibility, current is 40
+
+--- TURN 14 ---
+------------------------------------------------------------
+  Credibility: 40  |  Turns used: 13
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                 PEOPLE OF THE HOUSEHOLD                    |
++============================================================+
+  [1] Mr. Leonardo (Victim) - NOT Interviewed
+  [2] Mr. Enzo (Cook) - NOT Interviewed
+  [3] Mr. Lukas (Guard) - NOT Interviewed
+  [4] Mr. Toby (Servant) - NOT Interviewed
+  [5] Ms. Celine (Child) - NOT Interviewed
+  [6] Ms. Ruslana (Partner 1) - NOT Interviewed
+  [7] Mr. Dmitry (Partner 2) - NOT Interviewed
+  [8] Mr. Jad (PA) - NOT Interviewed
+  [0] Back to game menu
+
+  Select a person to interview (0 to 8):   You have NOT interviewed Mr. Dmitry yet. Interview? (y/n): 
+  [Interview Refused] Interview with Mr.Dmitry restricted: requires 50 credibility, current is 35
+
+--- TURN 15 ---
+------------------------------------------------------------
+  Credibility: 35  |  Turns used: 14
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                   COTTAGE LOCATIONS                        |
++============================================================+
+[1] Bedroom 1 - Searched
+[2] Bedroom 2 - NOT Searched
+[3] Study Room - NOT Searched
+[4] Garden - NOT Searched
+[5] Kitchen - NOT Searched
+[6] Dining Room - NOT Searched
+[7] Living Room - NOT Searched
+  [0] Back to game menu
+
+  Select a location to visit (0 to 7):   You have already searched Bedroom 1. Search again? (y/n): 
+  Letter A collected at position 1 of Word 1.
+
+--- TURN 16 ---
+------------------------------------------------------------
+  Credibility: 30  |  Turns used: 15
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                 PEOPLE OF THE HOUSEHOLD                    |
++============================================================+
+  [1] Mr. Leonardo (Victim) - NOT Interviewed
+  [2] Mr. Enzo (Cook) - NOT Interviewed
+  [3] Mr. Lukas (Guard) - NOT Interviewed
+  [4] Mr. Toby (Servant) - NOT Interviewed
+  [5] Ms. Celine (Child) - NOT Interviewed
+  [6] Ms. Ruslana (Partner 1) - NOT Interviewed
+  [7] Mr. Dmitry (Partner 2) - NOT Interviewed
+  [8] Mr. Jad (PA) - NOT Interviewed
+  [0] Back to game menu
+
+  Select a person to interview (0 to 8):   You have NOT interviewed Mr. Jad yet. Interview? (y/n): 
+  [Interview Refused] Interview with Mr.Jad restricted: requires 35 credibility, current is 25
+
+--- TURN 17 ---
+------------------------------------------------------------
+  Credibility: 25  |  Turns used: 16
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice: 
++============================================================+
+|                 PEOPLE OF THE HOUSEHOLD                    |
++============================================================+
+  [1] Mr. Leonardo (Victim) - NOT Interviewed
+  [2] Mr. Enzo (Cook) - NOT Interviewed
+  [3] Mr. Lukas (Guard) - NOT Interviewed
+  [4] Mr. Toby (Servant) - NOT Interviewed
+  [5] Ms. Celine (Child) - NOT Interviewed
+  [6] Ms. Ruslana (Partner 1) - NOT Interviewed
+  [7] Mr. Dmitry (Partner 2) - NOT Interviewed
+  [8] Mr. Jad (PA) - NOT Interviewed
+  [0] Back to game menu
+
+  Select a person to interview (0 to 8):   You have NOT interviewed Mr. Enzo yet. Interview? (y/n): 
+  Letter P collected at position 2 of Word 2.
+  Letter has been placed.
+
+--- TURN 18 ---
+------------------------------------------------------------
+  Credibility: 25  |  Turns used: 17
+------------------------------------------------------------
+Rack 1 (Locations): Rack: [A@1] 
+Rack 2 (People): Rack: [P@2] 
+
+  Scrabble Board:
+Word 1: [A] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [P] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [1] Visit a Location
+    [2] Interview a Person
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice:   Quit to main menu? The game will be recorded as LOSE. (y/n): 
++============================================================+
+|  Alina LOSE!                                               |
++============================================================+
+
+  Final credibility: 25 || Turns used: 17 || Culprit: Cook Mr.Enzo
+
+  Press Enter to return to main menu...
++============================================================+
+|                      MAIN MENU                             |
++============================================================+
+    [1] New Game
+    [2] View Leaderboard
+    [3] About
+    [4] Rules
+    [5] Exit
+
+  Choice: 
+  Thank you for playing The Locker Heist. Goodbye!
+
