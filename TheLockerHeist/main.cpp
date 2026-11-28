@@ -1,15 +1,14 @@
 // ============================================================
 // main.cpp  --  THE LOCKER HEIST
-// Driver and self-test harness for Commit 4.
+// Driver and self-test harness for Commit 8.
 //
 // Operating modes:
-//   heist.exe             -- Verifies data files via DataLoader and displays
-//                            the banner with "Data files verified: OK".
-//   heist.exe --selftest  -- Executes ST-01 (foundation tests),
-//                            ST-02 (exceptions, StringUtils, DataLoader),
-//                            ST-03 (character hierarchy, diamond, factory),
-//                            and ST-04 (TileRack & Scrabble board DMA).
-//                            Exits with 0 if all tests pass, 1 if any fail.
+//   heist.exe               -- Full game: main menu, New Game, Leaderboard,
+//                              About, Rules, Exit via GameEngine singleton.
+//   heist.exe --selftest    -- Runs ST-01 through ST-08 and exits 0 on
+//                              all-pass, 1 on any failure.
+//   heist.exe --culprit N   -- Same as normal game but culprit is forced
+//                              to column N (1=Cook...7=Child) for testing.
 // ============================================================
 
 #include "heist.h"
@@ -1774,6 +1773,178 @@ static int runScoreBoardAndOperatorsSelfTest()
 }
 
 // ------------------------------------------------------------
+// runGameEngineSelfTest()  --  ST-08 (Commit 8)
+// ------------------------------------------------------------
+static int runGameEngineSelfTest()
+{
+    int passed = 0;
+    int failed = 0;
+
+    std::cout << "\n========================================\n";
+    std::cout << "  ST-08  GameEngine & Round Setup Self-Test\n";
+    std::cout << "========================================\n";
+
+    // 1. Singleton pattern: getInstance() returns same address
+    {
+        GameEngine& e1 = GameEngine::getInstance();
+        GameEngine& e2 = GameEngine::getInstance();
+        check(&e1 == &e2, "ST-08: GameEngine::getInstance() returns identical memory address", passed, failed);
+    }
+
+    // 2. destroyInstance() resets pointer and allows clean re-instantiation
+    {
+        GameEngine::destroyInstance();
+        GameEngine& eFresh = GameEngine::getInstance();
+        check(eFresh.getCulpritColumn() == 0,
+              "ST-08: GameEngine::destroyInstance() and re-instantiation succeeds cleanly", passed, failed);
+    }
+
+    // Load authentic profiles and locations for round verification
+    ClueProfile profiles[DataLoader::ROLE_COUNT];
+    DataLoader::loadClueProfiles(DataLoader::FILE_CLUE, profiles, DataLoader::ROLE_COUNT);
+    LocationRecord locations[DataLoader::LOCATION_COUNT];
+    DataLoader::loadLocations(DataLoader::FILE_LOCATIONS, locations, DataLoader::LOCATION_COUNT);
+
+    GameEngine& engine = GameEngine::getInstance();
+
+    // 3. Forced culprit 1 through 7 verification
+    for (int col1to7 = 1; col1to7 <= 7; ++col1to7)
+    {
+        int col0based = col1to7 - 1;
+        engine.setForcedCulprit(col1to7);
+        engine.beginRound("Agent_Test");
+
+        check(engine.getCulpritColumn() == col0based,
+              "ST-08: Forced culprit column correctly configured in GameEngine", passed, failed);
+
+        // Verify cast: exactly one culprit, not Victim, role matches
+        int culpritCount = 0;
+        int culpritIndex = -1;
+        for (int i = 0; i < GameEngine::CAST_SIZE; ++i)
+        {
+            if (engine.getCharacter(i)->getIsCulprit())
+            {
+                ++culpritCount;
+                culpritIndex = i;
+            }
+        }
+
+        check(culpritCount == 1,
+              "ST-08: Exactly one character marked as culprit in cast", passed, failed);
+        check(!engine.getCharacter(0)->getIsCulprit(),
+              "ST-08: Cast index 0 (Victim) is never marked as culprit", passed, failed);
+
+        std::string expectedRoleNorm = StringUtils::replaceChar(profiles[col0based].culpritRole, '_', ' ');
+        std::string actualRoleNorm = StringUtils::replaceChar(engine.getCharacter(culpritIndex)->getRole(), '_', ' ');
+        check(StringUtils::equalsIgnoreCase(actualRoleNorm, expectedRoleNorm),
+              "ST-08: Culprit character role matches clue profile culpritRole", passed, failed);
+
+        // Verify Scrabble target words match profile
+        check(engine.getScrabble().getTargetWord(WordRow::Word1) == profiles[col0based].word1,
+              "ST-08: Scrabble target Word 1 matches culprit profile word1", passed, failed);
+        check(engine.getScrabble().getTargetWord(WordRow::Word2) == profiles[col0based].word2,
+              "ST-08: Scrabble target Word 2 matches culprit profile word2", passed, failed);
+
+        // Verify Cottage location clue letters match culprit column in locations.txt
+        bool cottageMatch = true;
+        for (int loc = 1; loc <= DataLoader::LOCATION_COUNT; ++loc)
+        {
+            if (engine.getCottage().getLocationClue(loc).clueLetter != locations[loc - 1].letters[col0based])
+            {
+                cottageMatch = false;
+                break;
+            }
+        }
+        check(cottageMatch,
+              "ST-08: All cottage room clue letters match culprit column in locations.txt", passed, failed);
+
+        // Verify Detective has rules starting credibility
+        check(engine.getDetective().getCredibility() == engine.getRules().startingCredibility,
+              "ST-08: Detective initialized with rules starting credibility", passed, failed);
+        check(engine.getDetective().getName() == "Agent_Test",
+              "ST-08: Detective initialized with sanitized detective name", passed, failed);
+    }
+
+    // 4. Boundary checks on setForcedCulprit (0 and 8 must throw InvalidInputException)
+    {
+        bool caughtZero = false;
+        try { engine.setForcedCulprit(0); }
+        catch (const InvalidInputException&) { caughtZero = true; }
+        check(caughtZero, "ST-08: setForcedCulprit(0) throws InvalidInputException", passed, failed);
+
+        bool caughtEight = false;
+        try { engine.setForcedCulprit(8); }
+        catch (const InvalidInputException&) { caughtEight = true; }
+        check(caughtEight, "ST-08: setForcedCulprit(8) throws InvalidInputException", passed, failed);
+    }
+
+    // 5. sanitiseName() unit tests
+    {
+        bool caughtEmpty = false;
+        try { GameEngine::sanitiseName("", '_'); }
+        catch (const InvalidInputException&) { caughtEmpty = true; }
+        check(caughtEmpty, "ST-08: sanitiseName(\"\") throws InvalidInputException", passed, failed);
+
+        std::string s1 = GameEngine::sanitiseName("Agent 007", '_');
+        check(s1 == "Agent_007", "ST-08: sanitiseName replaces space with underscore", passed, failed);
+
+        std::string s2 = GameEngine::sanitiseName("Agent 007", '.');
+        check(s2 == "Agent.007", "ST-08: sanitiseName replaces space with dot", passed, failed);
+
+        bool caughtPipe = false;
+        try { GameEngine::sanitiseName("Agent|007", '_'); }
+        catch (const InvalidInputException&) { caughtPipe = true; }
+        check(caughtPipe, "ST-08: sanitiseName rejects pipe '|' character", passed, failed);
+
+        // 20 characters is allowed
+        std::string name20 = "12345678901234567890";
+        check(GameEngine::sanitiseName(name20, '_') == name20,
+              "ST-08: sanitiseName accepts exactly 20-character name", passed, failed);
+
+        // 21 characters throws
+        bool caught21 = false;
+        try { GameEngine::sanitiseName("123456789012345678901", '_'); }
+        catch (const InvalidInputException&) { caught21 = true; }
+        check(caught21, "ST-08: sanitiseName rejects 21-character name", passed, failed);
+    }
+
+    // 6. loadRulesOrDefaults() tests
+    {
+        bool usedDefaultsMissing = false;
+        RulesConfig rMissing = GameEngine::loadRulesOrDefaults("nonexistent_rules_file.txt", usedDefaultsMissing);
+        check(usedDefaultsMissing,
+              "ST-08: loadRulesOrDefaults sets usedDefaults=true for missing file", passed, failed);
+        check(rMissing.maxTurns == 25 && rMissing.startingCredibility == 100,
+              "ST-08: loadRulesOrDefaults returns standard default rules on missing file", passed, failed);
+
+        // Test corrupt rules file fallback
+        const std::string corruptRulesPath = "temp_corrupt_rules_st08.txt";
+        std::remove(corruptRulesPath.c_str());
+        {
+            std::ofstream out(corruptRulesPath);
+            out << "InvalidKey=BadValue\n";
+        }
+
+        bool usedDefaultsCorrupt = false;
+        RulesConfig rCorrupt = GameEngine::loadRulesOrDefaults(corruptRulesPath, usedDefaultsCorrupt);
+        check(usedDefaultsCorrupt,
+              "ST-08: loadRulesOrDefaults sets usedDefaults=true for corrupt rules file", passed, failed);
+        check(rCorrupt.maxTurns == 25 && rCorrupt.startingCredibility == 100,
+              "ST-08: loadRulesOrDefaults falls back to default rules on corrupt file", passed, failed);
+        std::remove(corruptRulesPath.c_str());
+    }
+
+    // Always clean up singleton instance after test run
+    GameEngine::destroyInstance();
+
+    std::cout << "----------------------------------------\n";
+    std::cout << "  Result: " << passed << " passed, " << failed << " failed.\n";
+    std::cout << "========================================\n\n";
+
+    return failed;
+}
+
+// ------------------------------------------------------------
 // main()
 // ------------------------------------------------------------
 int main(int argc, char* argv[])
@@ -1789,36 +1960,74 @@ int main(int argc, char* argv[])
         totalFailures += runCottageAndDetectiveSelfTest();
         totalFailures += runDynamicArraySelfTest();
         totalFailures += runScoreBoardAndOperatorsSelfTest();
+        totalFailures += runGameEngineSelfTest();
         return (totalFailures > 0) ? 1 : 0;
     }
 
-    // Normal startup execution: display banner and verify authentic data files
-    std::cout << "\n";
-    std::cout << "+============================================================+\n";
-    std::cout << "|          THE LOCKER HEIST  --  DETECTIVE GAME              |\n";
-    std::cout << "+============================================================+\n";
-    std::cout << "\n";
+    int forcedCulprit = -1;
+    if (argc >= 2)
+    {
+        std::string arg1 = argv[1];
+        if (arg1 == "--culprit")
+        {
+            if (argc < 3)
+            {
+                std::cout << "Usage: heist.exe [--selftest] [--culprit <1-7>]\n";
+                return 1;
+            }
+            try
+            {
+                forcedCulprit = StringUtils::parseInt(argv[2]);
+                if (forcedCulprit < 1 || forcedCulprit > 7)
+                {
+                    std::cout << "Usage: heist.exe [--selftest] [--culprit <1-7>]\n";
+                    std::cout << "Error: Culprit number must be between 1 and 7.\n";
+                    return 1;
+                }
+            }
+            catch (const InvalidInputException&)
+            {
+                std::cout << "Usage: heist.exe [--selftest] [--culprit <1-7>]\n";
+                std::cout << "Error: Invalid culprit number.\n";
+                return 1;
+            }
+        }
+        else
+        {
+            std::cout << "Usage: heist.exe [--selftest] [--culprit <1-7>]\n";
+            return 1;
+        }
+    }
+
+    // ScoreBoard instance created on the stack in main() (ScoreBoard owns its lifetime)
+    ScoreBoard scoreBoard(DataLoader::FILE_SCOREBOARD);
 
     try
     {
-        ClueProfile profiles[DataLoader::ROLE_COUNT];
-        LocationRecord locations[DataLoader::LOCATION_COUNT];
-        CharacterRecord characters[DataLoader::CHARACTER_COUNT];
+        GameEngine& engine = GameEngine::getInstance();
+        engine.attachScoreBoard(&scoreBoard);
 
-        DataLoader::loadRules(DataLoader::FILE_RULES);
-        DataLoader::loadClueProfiles(DataLoader::FILE_CLUE, profiles, DataLoader::ROLE_COUNT);
-        DataLoader::loadLocations(DataLoader::FILE_LOCATIONS, locations, DataLoader::LOCATION_COUNT);
-        DataLoader::loadCharacters(DataLoader::FILE_CHARACTERS, characters, DataLoader::CHARACTER_COUNT);
-        DataLoader::loadAboutText(DataLoader::FILE_ABOUT);
-        DataLoader::validateConsistency(profiles, locations, characters);
+        if (forcedCulprit >= 1 && forcedCulprit <= 7)
+        {
+            engine.setForcedCulprit(forcedCulprit);
+        }
 
-        std::cout << "  Data files verified: OK\n";
-        std::cout << "  (Temporary startup output -- replaced in Commit 8)\n\n";
-        return 0;
+        engine.run();
     }
     catch (const GameException& ex)
     {
-        std::cout << "  [ERROR] " << ex.getCategory() << ": " << ex.getMessage() << "\n\n";
+        std::cout << "Fatal data error: " << ex.getMessage() << "\n";
+        GameEngine::destroyInstance();
         return 1;
     }
+    catch (...)
+    {
+        std::cout << "Unexpected error.\n";
+        GameEngine::destroyInstance();
+        return 1;
+    }
+
+    // Always release GameEngine singleton memory before returning
+    GameEngine::destroyInstance();
+    return 0;
 }

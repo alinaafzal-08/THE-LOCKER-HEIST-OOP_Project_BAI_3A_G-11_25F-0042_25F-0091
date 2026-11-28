@@ -837,6 +837,11 @@ private:
     WordRow clueRowChar;
 
 public:
+    // Minimum credibility the detective must have before interviewing the Victim.
+    // GameEngine::showRules() reads this constant directly so the displayed threshold
+    // always matches the enforced value -- no magic number duplication.
+    static const int MIN_CREDIBILITY_INTERVIEW = 80;
+
     Victim(const std::string& name, const std::string& nat, char letter, int pos);
     virtual ~Victim() override;
 
@@ -988,6 +993,11 @@ private:
     int partnerNumber; // 1 or 2
 
 public:
+    // Minimum credibility required to interview a business partner.
+    // Interviewing a partner costs trust; the detective must have at least
+    // this much credibility before the conversation is allowed.
+    static const int MIN_CREDIBILITY_INTERVIEW = 50;
+
     Partner(const std::string& name, const std::string& nat, int number, char letter, int pos);
     virtual ~Partner() override;
 
@@ -1000,6 +1010,10 @@ public:
 class PA : public BusinessRelations, public CloseRelations
 {
 public:
+    // Minimum credibility required to interview the Personal Assistant.
+    // PA has less clout than a Partner, so the threshold is lower.
+    static const int MIN_CREDIBILITY_INTERVIEW = 35;
+
     PA(const std::string& name, const std::string& nat, char letter, int pos);
     virtual ~PA() override;
 
@@ -1016,6 +1030,11 @@ private:
 public:
     static const int DEFAULT_AGE = 17;
 
+    // Minimum credibility required to interview the child witness.
+    // The child is cooperative but protected; the detective must demonstrate
+    // sufficient reliability before she will speak.
+    static const int MIN_CREDIBILITY_INTERVIEW = 75;
+
     Child(const std::string& name, const std::string& nat, char letter, int pos, int age = DEFAULT_AGE);
     virtual ~Child() override;
 
@@ -1029,6 +1048,199 @@ class CharacterFactory
 {
 public:
     static Character* create(const CharacterRecord& record, int culpritColumn);
+};
+
+
+// ============================================================
+// SECTION 9 -- CONSOLE UTILITIES (Commit 8, Module 2)
+// Pure static helpers that centralise all terminal I/O.
+// Keeping every cin/cout call in one place makes it easy to
+// redirect or mock input during automated E2E testing without
+// changing any game logic code.
+// ============================================================
+
+// ConsoleUtils provides safe, validated console input and output helpers.
+// All methods are static -- no instance is ever needed.
+class ConsoleUtils
+{
+private:
+    // Set to true once std::cin reaches EOF so game loops can exit gracefully
+    // without hanging when stdin is a redirected pipe from a test script.
+    static bool inputClosed;
+
+public:
+    // Clears the terminal screen (Windows: system("cls")).
+    // Called between game phases to keep the display tidy.
+    static void clearScreen();
+
+    // Prints prompt, reads one full line from stdin and returns it.
+    // Sets inputClosed = true if cin hits EOF (e.g. during automated testing).
+    static std::string readLine(const std::string& prompt);
+
+    // Repeatedly calls readLine until the user types an integer in [minVal, maxVal].
+    // Throws nothing -- invalid input is caught internally and re-prompted.
+    // Returns when isInputClosed() becomes true (stops blocking pipe-driven tests).
+    static int readIntInRange(const std::string& prompt, int minVal, int maxVal);
+
+    // Prompts for y/Y/n/N and loops until a valid answer is given or EOF is reached.
+    // Returns true for y/Y, false for n/N or EOF.
+    static bool readYesNo(const std::string& prompt);
+
+    // Returns true once std::cin has reached EOF.
+    // Game loops check this flag to avoid blocking on a closed pipe.
+    static bool isInputClosed();
+};
+
+
+// ============================================================
+// SECTION 10 -- GAME ENGINE SINGLETON (Commit 8, Modules 2 & 12)
+// GameEngine owns the full lifetime of a single game session.
+// Singleton pattern ensures only one engine exists at a time and
+// that the destructor always runs in a predictable order.
+//
+// RELATIONSHIP LEGEND (documented per Module 3):
+//   COMPOSITION  : engine owns and destroys these members
+//   ASSOCIATION  : engine holds a pointer it does not delete
+// ============================================================
+
+// GameEngine orchestrates the main menu, New Game setup, and the in-game loop.
+// Singleton: use GameEngine::getInstance() everywhere; call destroyInstance()
+// once at program exit before the ScoreBoard local variable goes out of scope.
+class GameEngine
+{
+private:
+    // Singleton control: private constructor/destructor, deleted copy semantics
+    GameEngine();
+    ~GameEngine();
+    GameEngine(const GameEngine&) = delete;
+    GameEngine& operator=(const GameEngine&) = delete;
+
+    // The one and only engine instance (nullptr when not yet created or destroyed)
+    static GameEngine* instance;
+
+    // ------------------------------------------------------------------
+    // COMPOSITION: GameEngine owns and destroys each of these members.
+    // ------------------------------------------------------------------
+
+    // The investigator: deep-copy assigned at the start of every New Game
+    Detective detective;        // COMPOSITION
+
+    // The mansion: rebuilt from location records each round
+    Cottage   cottage;          // COMPOSITION
+
+    // The crossword board: rebuilt with culprit words each round
+    Scrabble  scrabble;         // COMPOSITION
+
+    // Merged clue rack shown to the player (capacity 16 = 7 + 1 separator + 8)
+    TileRack  combinedClue;     // COMPOSITION
+
+    // The 8 characters in play (index 0 = Victim; 1-7 = suspects).
+    // Heap-allocated by CharacterFactory and deleted in the destructor.
+    Character* cast[8];         // COMPOSITION (owned heap pointers)
+
+    // ------------------------------------------------------------------
+    // ASSOCIATION: engine uses ScoreBoard but does not own its lifetime.
+    // main() creates the ScoreBoard on the stack and passes a pointer here
+    // so that the engine can record scores without controlling destruction.
+    // ------------------------------------------------------------------
+    ScoreBoard* scoreBoard;     // ASSOCIATION (never deleted by engine)
+
+    // Game configuration loaded at the start of each round
+    RulesConfig rules;
+
+    // Current high-level phase of the game
+    GameState state;
+
+    // 0-based column identifying the culprit in this round (0=Cook ... 6=Child)
+    int culpritColumn;
+
+    // -1 means pick at random; 0-6 means use that column (set by --culprit flag)
+    int forcedCulpritColumn;
+
+    // Clue profiles loaded from clue.txt (one entry per suspect column)
+    ClueProfile profiles[DataLoader::ROLE_COUNT];
+
+    // Location records loaded from locations.txt (one per room)
+    LocationRecord locationRecords[DataLoader::LOCATION_COUNT];
+
+    // Character records loaded from characters.txt (one per cast member)
+    CharacterRecord characterRecords[DataLoader::CHARACTER_COUNT];
+
+    // ------------------------------------------------------------------
+    // Private helpers used only by run() and beginRound()
+    // ------------------------------------------------------------------
+
+    // Renders the main menu banner and reads the player's selection (1-5)
+    void showMainMenu();
+
+    // Runs the full New Game flow: asks for a name, sets up data, enters the game loop
+    void handleNewGame();
+
+    // The in-game action loop shown after the round is set up (Commit 8: view board + quit only)
+    void runInGameLoop();
+
+    // Renders the Rules screen using live RulesConfig values and static MIN_CREDIBILITY constants
+    void showRules();
+
+    // Reads and displays about.txt to the player
+    void showAbout();
+
+    // Displays the persistent leaderboard; catches file exceptions and continues gracefully
+    void showLeaderboard();
+
+    // Prompts for the detective's name and enforces validation rules
+    std::string askDetectiveName();
+
+public:
+    // Maximum allowed characters in a detective name before rejection
+    static const int MAX_DETECTIVE_NAME_LEN = 20;
+
+    // Total number of characters managed by the engine (1 Victim + 7 suspects)
+    static const int CAST_SIZE = 8;
+
+    // Returns the single GameEngine instance, creating it on first call.
+    static GameEngine& getInstance();
+
+    // Deletes the singleton instance, releasing all composed members.
+    // Must be called before the ScoreBoard passed to attachScoreBoard() is destroyed.
+    static void destroyInstance();
+
+    // Attaches an external ScoreBoard; the engine never deletes it (ASSOCIATION).
+    void attachScoreBoard(ScoreBoard* sb);
+
+    // Top-level entry point: shows title + scenario, then loops on the main menu.
+    void run();
+
+    // Sets up one complete game round: loads data, picks a culprit, builds cast,
+    // cottage, scrabble board and detective, then prints the round-start message.
+    void beginRound(const std::string& detectiveName);
+
+    // Forces the culprit to a specific one-based column (1=Cook ... 7=Child).
+    // Throws InvalidInputException for values outside [1, 7].
+    void setForcedCulprit(int oneToSeven);
+
+    // ------------------------------------------------------------------
+    // Static utility functions (also used by ST-08 self-tests)
+    // ------------------------------------------------------------------
+
+    // Trims the raw name, rejects empty / too long / pipe char / control chars,
+    // and replaces internal spaces with spaceReplacement ('_' or '.').
+    // Throws InvalidInputException on any violation.
+    static std::string sanitiseName(const std::string& raw, char spaceReplacement);
+
+    // Attempts to load rules from path; on FileNotFoundException or FileCorruptException
+    // fills usedDefaults = true and returns RulesConfig::defaultRules() instead.
+    static RulesConfig loadRulesOrDefaults(const std::string& path, bool& usedDefaults);
+
+    // ------------------------------------------------------------------
+    // Read-only getters (safe for use in self-tests without coupling)
+    // ------------------------------------------------------------------
+    int               getCulpritColumn()  const;
+    const Character*  getCharacter(int i) const; // 0-based, throws on out-of-range
+    const Scrabble&   getScrabble()       const;
+    const Cottage&    getCottage()        const;
+    const Detective&  getDetective()      const;
+    const RulesConfig& getRules()         const;
 };
 
 

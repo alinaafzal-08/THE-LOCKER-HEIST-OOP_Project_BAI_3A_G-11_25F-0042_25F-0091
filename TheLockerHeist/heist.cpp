@@ -1455,7 +1455,7 @@ Clue Victim::getClue() const
 
 int Victim::getMinimumCredibility() const
 {
-    return 80;
+    return MIN_CREDIBILITY_INTERVIEW;
 }
 
 
@@ -1787,7 +1787,7 @@ int Partner::getPartnerNumber() const
 
 int Partner::getMinimumCredibility() const
 {
-    return 50;
+    return MIN_CREDIBILITY_INTERVIEW;
 }
 
 void Partner::display(std::ostream& out) const
@@ -1811,7 +1811,7 @@ PA::~PA()
 
 int PA::getMinimumCredibility() const
 {
-    return 35;
+    return MIN_CREDIBILITY_INTERVIEW;
 }
 
 void PA::display(std::ostream& out) const
@@ -1845,7 +1845,7 @@ int Child::getAge() const
 
 int Child::getMinimumCredibility() const
 {
-    return 75;
+    return MIN_CREDIBILITY_INTERVIEW;
 }
 
 void Child::display(std::ostream& out) const
@@ -3413,4 +3413,699 @@ std::ostream& operator<<(std::ostream& out, const Cottage& cottage)
 {
     cottage.displayLocations(out);
     return out;
+}
+
+
+// ============================================================
+// SECTION 9 -- CONSOLE UTILITIES (Commit 8)
+// ============================================================
+
+// Static member definition: starts false; set to true when cin hits EOF.
+bool ConsoleUtils::inputClosed = false;
+
+// clearScreen() calls the Windows system command to wipe the terminal.
+// Using system("cls") from <cstdlib> which is already included.
+void ConsoleUtils::clearScreen()
+{
+    system("cls");
+}
+
+// readLine() shows a prompt then reads one full line using std::getline.
+// If getline fails (EOF on a piped test script), it sets inputClosed
+// so callers can break out of their loops instead of blocking forever.
+std::string ConsoleUtils::readLine(const std::string& prompt)
+{
+    std::string line;
+    if (!prompt.empty())
+    {
+        std::cout << prompt;
+    }
+    if (!std::getline(std::cin, line))
+    {
+        inputClosed = true;
+        return "";
+    }
+    return StringUtils::trim(line);
+}
+
+// readIntInRange() keeps asking until the player enters a valid integer
+// that falls within [minVal, maxVal].  Internally catches parse errors
+// and out-of-range values and re-prompts rather than propagating them.
+// Returns minVal when inputClosed becomes true so the caller can exit cleanly.
+int ConsoleUtils::readIntInRange(const std::string& prompt, int minVal, int maxVal)
+{
+    while (true)
+    {
+        if (inputClosed)
+        {
+            return minVal; // safe sentinel so the caller can detect EOF via isInputClosed()
+        }
+
+        std::string raw = readLine(prompt);
+
+        if (inputClosed)
+        {
+            return minVal;
+        }
+
+        try
+        {
+            int value = StringUtils::parseInt(raw);
+            if (value < minVal || value > maxVal)
+            {
+                std::cout << "  Please enter a number between " << minVal
+                          << " and " << maxVal << ".\n";
+                continue;
+            }
+            return value;
+        }
+        catch (const InvalidInputException&)
+        {
+            std::cout << "  Invalid input. Please enter a number between "
+                      << minVal << " and " << maxVal << ".\n";
+        }
+    }
+}
+
+// readYesNo() loops until the player types y/Y/n/N or stdin closes.
+// Returns true for yes, false for no or EOF -- never blocks forever.
+bool ConsoleUtils::readYesNo(const std::string& prompt)
+{
+    while (true)
+    {
+        if (inputClosed)
+        {
+            return false; // treat EOF as "no"
+        }
+
+        std::string raw = readLine(prompt + " (y/n): ");
+
+        if (inputClosed)
+        {
+            return false;
+        }
+
+        if (!raw.empty())
+        {
+            char ch = raw[0];
+            if (ch == 'y' || ch == 'Y') { return true;  }
+            if (ch == 'n' || ch == 'N') { return false; }
+        }
+
+        std::cout << "  Please type y or n.\n";
+    }
+}
+
+// isInputClosed() lets game loops check whether stdin has ended
+// without calling any blocking I/O.
+bool ConsoleUtils::isInputClosed()
+{
+    return inputClosed;
+}
+
+
+// ============================================================
+// SECTION 10 -- GAME ENGINE SINGLETON (Commit 8)
+// ============================================================
+
+// Static instance pointer starts null; created on first getInstance() call.
+GameEngine* GameEngine::instance = nullptr;
+
+// GameEngine constructor seeds the random number generator, zeroes the
+// cast array, and sets the initial state before any round is started.
+GameEngine::GameEngine()
+    : detective(),
+      cottage(),
+      scrabble(),
+      combinedClue(16),    // capacity = 7 (Word1) + 1 (separator) + 8 (Word2)
+      scoreBoard(nullptr),
+      rules(),
+      state(GameState::Menu),
+      culpritColumn(0),
+      forcedCulpritColumn(-1)  // -1 means pick at random each round
+{
+    // Seed the global random number generator once per engine lifetime.
+    // Every subsequent rand() call in this session uses this seed.
+    srand(static_cast<unsigned int>(std::time(nullptr)));
+
+    // Initialise all cast slots to null so the destructor can safely
+    // skip slots that were never filled.
+    for (int i = 0; i < CAST_SIZE; ++i)
+    {
+        cast[i] = nullptr;
+    }
+}
+
+// GameEngine destructor frees all Characters that the engine created via
+// CharacterFactory.  ScoreBoard is NOT deleted here because main() owns it.
+GameEngine::~GameEngine()
+{
+    for (int i = 0; i < CAST_SIZE; ++i)
+    {
+        delete cast[i];
+        cast[i] = nullptr;
+    }
+}
+
+// getInstance() creates the singleton on the first call and returns a
+// reference thereafter.  Using a static pointer (not a local static) so
+// destroyInstance() can fully release the memory.
+GameEngine& GameEngine::getInstance()
+{
+    if (instance == nullptr)
+    {
+        instance = new GameEngine();
+    }
+    return *instance;
+}
+
+// destroyInstance() deletes the singleton and resets the pointer to null.
+// Always call this in main() before the ScoreBoard goes out of scope.
+void GameEngine::destroyInstance()
+{
+    delete instance;
+    instance = nullptr;
+}
+
+// attachScoreBoard() gives the engine a pointer to the ScoreBoard created
+// in main().  The engine will call displayAll() and addScore() on it but
+// will never delete it (ASSOCIATION, not COMPOSITION).
+void GameEngine::attachScoreBoard(ScoreBoard* sb)
+{
+    scoreBoard = sb;
+}
+
+// setForcedCulprit() lets the --culprit command-line flag pre-select the
+// culprit for testing without randomness.  oneToSeven maps 1=Cook...7=Child.
+// Values outside [1,7] are invalid and throw to prevent bad test setups.
+void GameEngine::setForcedCulprit(int oneToSeven)
+{
+    if (oneToSeven < 1 || oneToSeven > 7)
+    {
+        throw InvalidInputException(
+            "Culprit column must be 1 (Cook) to 7 (Child); received: " +
+            StringUtils::intToString(oneToSeven));
+    }
+    forcedCulpritColumn = oneToSeven - 1; // convert to 0-based index
+}
+
+// sanitiseName() validates and cleans a raw detective name entered by the player.
+// Rules: not empty, not longer than 20 chars, no pipe '|' or control chars (<32),
+// and spaces get replaced by the chosen replacement character (_ or .).
+// Throws InvalidInputException describing exactly which rule was broken.
+std::string GameEngine::sanitiseName(const std::string& raw, char spaceReplacement)
+{
+    // Reject empty names immediately -- the player must provide something
+    if (raw.empty())
+    {
+        throw InvalidInputException("Detective name cannot be empty.");
+    }
+
+    // Reject names that are too long for the scoreboard column
+    if (static_cast<int>(raw.size()) > MAX_DETECTIVE_NAME_LEN)
+    {
+        throw InvalidInputException(
+            "Detective name must be at most " +
+            StringUtils::intToString(MAX_DETECTIVE_NAME_LEN) +
+            " characters long.");
+    }
+
+    // Build the sanitised result, checking each character along the way
+    std::string result = "";
+    for (int i = 0; i < static_cast<int>(raw.size()); ++i)
+    {
+        char c = raw[i];
+
+        // Pipe is the scoreBoard field delimiter -- absolutely forbidden in names
+        if (c == '|')
+        {
+            throw InvalidInputException(
+                "Detective name must not contain the '|' character.");
+        }
+
+        // Control characters (ASCII < 32) would corrupt the display
+        if (static_cast<int>(c) < 32)
+        {
+            throw InvalidInputException(
+                "Detective name must not contain control characters.");
+        }
+
+        // Replace spaces with the user-chosen separator
+        if (c == ' ')
+        {
+            result += spaceReplacement;
+        }
+        else
+        {
+            result += c;
+        }
+    }
+
+    return result;
+}
+
+// loadRulesOrDefaults() tries to load rules from the given path.
+// If the file is missing or corrupt it silently falls back to defaults
+// and sets usedDefaults = true so the caller can warn the player.
+RulesConfig GameEngine::loadRulesOrDefaults(const std::string& path, bool& usedDefaults)
+{
+    try
+    {
+        RulesConfig loaded = DataLoader::loadRules(path);
+        usedDefaults = false;
+        return loaded;
+    }
+    catch (const FileNotFoundException&)
+    {
+        usedDefaults = true;
+        return RulesConfig::defaultRules();
+    }
+    catch (const FileCorruptException&)
+    {
+        usedDefaults = true;
+        return RulesConfig::defaultRules();
+    }
+}
+
+// beginRound() sets up a complete game session: loads data files, selects
+// the culprit, builds the full cast via CharacterFactory, constructs the
+// Cottage and Scrabble board for the culprit's words, and resets the Detective.
+// Fatal data errors (FileNotFound, FileCorrupt) propagate up to run() which
+// reports them and returns to the main menu.
+void GameEngine::beginRound(const std::string& detectiveName)
+{
+    // 1. Load rules, falling back to defaults if the file is missing or corrupt.
+    bool usedDefaults = false;
+    rules = loadRulesOrDefaults(DataLoader::FILE_RULES, usedDefaults);
+    if (usedDefaults)
+    {
+        std::cout << "\n  [WARNING] rules.txt could not be loaded -- using default rules.\n\n";
+    }
+
+    // 2. Load clue profiles, locations and characters from their data files.
+    //    validateConsistency throws if any file is internally inconsistent.
+    DataLoader::loadClueProfiles(DataLoader::FILE_CLUE, profiles, DataLoader::ROLE_COUNT);
+    DataLoader::loadLocations(DataLoader::FILE_LOCATIONS, locationRecords, DataLoader::LOCATION_COUNT);
+    DataLoader::loadCharacters(DataLoader::FILE_CHARACTERS, characterRecords, DataLoader::CHARACTER_COUNT);
+    DataLoader::validateConsistency(profiles, locationRecords, characterRecords);
+
+    // 3. Pick the culprit -- use forced column if set, otherwise random.
+    if (forcedCulpritColumn >= 0)
+    {
+        culpritColumn = forcedCulpritColumn;
+    }
+    else
+    {
+        culpritColumn = rand() % DataLoader::ROLE_COUNT;
+    }
+
+    // 4. Delete any characters from a previous round, then rebuild the full cast.
+    for (int i = 0; i < CAST_SIZE; ++i)
+    {
+        delete cast[i];
+        cast[i] = nullptr;
+    }
+
+    // The culprit's role in the profile may use underscores (e.g. "Partner_1"),
+    // while the character records may use spaces ("Partner 1").  Normalise both
+    // sides to spaces for a reliable match.
+    std::string culpritRoleNorm =
+        StringUtils::replaceChar(profiles[culpritColumn].culpritRole, '_', ' ');
+
+    for (int i = 0; i < DataLoader::CHARACTER_COUNT; ++i)
+    {
+        // CharacterFactory reads characterRecords[i].isCulprit but we override
+        // it ourselves after creation so the factory always gets isCulprit=false
+        // from the data file (which is correct -- the data file never sets it).
+        cast[i] = CharacterFactory::create(characterRecords[i], culpritColumn);
+
+        // Compare normalised role strings to identify the culprit character.
+        // GameEngine is a friend of Character so it can directly set the private field.
+        std::string charRoleNorm =
+            StringUtils::replaceChar(characterRecords[i].role, '_', ' ');
+
+        if (StringUtils::equalsIgnoreCase(charRoleNorm, culpritRoleNorm))
+        {
+            cast[i]->isCulprit = true;
+        }
+    }
+
+    // 5. Build the Cottage for this round using the culprit's column.
+    cottage = Cottage(locationRecords, DataLoader::LOCATION_COUNT, culpritColumn);
+
+    // 6. Build the Scrabble board with the culprit's two secret words.
+    scrabble = Scrabble(profiles[culpritColumn].word1, profiles[culpritColumn].word2);
+
+    // 7. Assign-construct a fresh Detective (exercises deep-copy assignment operator).
+    detective = Detective(detectiveName, rules.startingCredibility);
+
+    // 8. Clear the combined clue rack from any previous round.
+    combinedClue.clear();
+
+    // 9. Mark the game as active.
+    state = GameState::Playing;
+
+    // 10. Confirm the round has started without revealing the culprit's identity.
+    std::cout << "\n";
+    std::cout << "+============================================================+\n";
+    std::cout << "|   A culprit has been secretly chosen. The game begins!     |\n";
+    std::cout << "+============================================================+\n";
+    std::cout << "\n";
+}
+
+// askDetectiveName() handles the full name-input loop for the New Game flow.
+// It enforces the naming rules and asks the player how to handle spaces.
+std::string GameEngine::askDetectiveName()
+{
+    while (true)
+    {
+        if (ConsoleUtils::isInputClosed()) { return "Detective"; }
+
+        std::string raw = ConsoleUtils::readLine("  Enter your detective name: ");
+
+        if (ConsoleUtils::isInputClosed()) { return "Detective"; }
+
+        // Reject blank or whitespace-only input before any other check
+        std::string trimmed = StringUtils::trim(raw);
+        if (trimmed.empty())
+        {
+            std::cout << "  Name cannot be empty. Please try again.\n";
+            continue;
+        }
+
+        // Check for forbidden characters before asking about spaces
+        bool hasPipe    = false;
+        bool hasControl = false;
+        bool hasTooLong = (static_cast<int>(trimmed.size()) > MAX_DETECTIVE_NAME_LEN);
+
+        for (int i = 0; i < static_cast<int>(trimmed.size()); ++i)
+        {
+            if (trimmed[i] == '|') { hasPipe = true; break; }
+            if (static_cast<int>(trimmed[i]) < 32) { hasControl = true; break; }
+        }
+
+        if (hasPipe)
+        {
+            std::cout << "  Name must not contain '|'. Please try again.\n";
+            continue;
+        }
+        if (hasControl)
+        {
+            std::cout << "  Name must not contain control characters. Please try again.\n";
+            continue;
+        }
+        if (hasTooLong)
+        {
+            std::cout << "  Name must be at most " << MAX_DETECTIVE_NAME_LEN
+                      << " characters. Please try again.\n";
+            continue;
+        }
+
+        // If the name contains spaces, ask the player how to represent them.
+        bool hasSpaces = false;
+        for (int i = 0; i < static_cast<int>(trimmed.size()); ++i)
+        {
+            if (trimmed[i] == ' ') { hasSpaces = true; break; }
+        }
+
+        if (hasSpaces)
+        {
+            std::cout << "  Your name contains spaces. Replace with underscore or dot?\n";
+            std::cout << "    [1] Underscore (_)\n";
+            std::cout << "    [2] Dot (.)\n";
+            int sepChoice = ConsoleUtils::readIntInRange("  Choice: ", 1, 2);
+            if (ConsoleUtils::isInputClosed()) { return "Detective"; }
+
+            char sep = (sepChoice == 1) ? '_' : '.';
+            return sanitiseName(trimmed, sep);
+        }
+
+        // No spaces -- accept as-is
+        return trimmed;
+    }
+}
+
+// showAbout() reads about.txt and prints its entire contents to the console.
+// If the file is missing it prints a brief inline message instead of throwing.
+void GameEngine::showAbout()
+{
+    std::cout << "\n";
+    try
+    {
+        std::string text = DataLoader::loadAboutText(DataLoader::FILE_ABOUT);
+        std::cout << text << "\n";
+    }
+    catch (const FileNotFoundException&)
+    {
+        std::cout << "  About file not found.\n\n";
+    }
+}
+
+// showLeaderboard() displays the persistent score table.
+// File exceptions are caught and reported so the player can continue playing.
+void GameEngine::showLeaderboard()
+{
+    std::cout << "\n";
+    if (scoreBoard == nullptr)
+    {
+        std::cout << "  Leaderboard not available.\n\n";
+        return;
+    }
+
+    try
+    {
+        scoreBoard->displayAll(std::cout);
+    }
+    catch (const FileNotFoundException& ex)
+    {
+        std::cout << "  [NOTE] " << ex.getMessage() << " -- no scores recorded yet.\n\n";
+    }
+    catch (const FileCorruptException& ex)
+    {
+        std::cout << "  [WARNING] Scoreboard file is corrupt: " << ex.getMessage() << "\n\n";
+    }
+}
+
+// showRules() prints all rule parameters from the loaded RulesConfig together
+// with the interview-credibility thresholds taken directly from the static
+// constants on each class so there is never a discrepancy between code and display.
+void GameEngine::showRules()
+{
+    std::cout << "\n";
+    std::cout << "+============================================================+\n";
+    std::cout << "|                      GAME RULES                            |\n";
+    std::cout << "+============================================================+\n";
+    std::cout << "\n";
+    std::cout << "  Max turns allowed  : " << rules.maxTurns << "\n";
+    std::cout << "  Starting credibility: " << rules.startingCredibility << "\n";
+    std::cout << "  Wrong turn penalty : " << (rules.wrongTurnPenalty * -1) << " credibility points\n";
+    std::cout << "  Wrong word penalty : " << (rules.wrongWordPenalty  * -1) << " credibility points\n";
+    std::cout << "  Win condition      : " << rules.winCondition  << "\n";
+    std::cout << "  Lose condition     : " << rules.loseCondition << "\n";
+    std::cout << "\n";
+    std::cout << "  Interview credibility thresholds:\n";
+    std::cout << "    Victim (Mr. Leonardo)  : " << Victim::MIN_CREDIBILITY_INTERVIEW  << "\n";
+    std::cout << "    Partner (Ms./Mr.)      : " << Partner::MIN_CREDIBILITY_INTERVIEW << "\n";
+    std::cout << "    Personal Assistant     : " << PA::MIN_CREDIBILITY_INTERVIEW      << "\n";
+    std::cout << "    Child (Ms. Celine)     : " << Child::MIN_CREDIBILITY_INTERVIEW   << "\n";
+    std::cout << "    House Help (Cook/Guard/Servant): no minimum\n";
+    std::cout << "\n";
+    ConsoleUtils::readLine("  Press Enter to continue...");
+}
+
+// runInGameLoop() is the active-investigation loop for Commit 8.
+// Only options [3] View Scrabble Board and [6] Quit are available here;
+// all remaining in-game features are added in Commits 9-11.
+void GameEngine::runInGameLoop()
+{
+    while (state == GameState::Playing && !ConsoleUtils::isInputClosed())
+    {
+        std::cout << "\n";
+        std::cout << "------------------------------------------------------------\n";
+        std::cout << "  Credibility: " << detective.getCredibility()
+                  << "  |  Turns used: " << detective.getTurnsUsed() << "\n";
+        std::cout << "------------------------------------------------------------\n";
+
+        // Show the detective's collected clue racks
+        detective.displayRacks(std::cout);
+
+        // Show the crossword board
+        std::cout << "\n  Scrabble Board:\n";
+        scrabble.display(std::cout);
+
+        // Show only the two options available in this commit
+        std::cout << "\n  What would you like to do?\n";
+        std::cout << "    [3] View Scrabble Board\n";
+        std::cout << "    [6] Quit to main menu\n";
+
+        int choice = ConsoleUtils::readIntInRange("\n  Choice: ", 1, 9);
+
+        if (ConsoleUtils::isInputClosed()) { break; }
+
+        switch (choice)
+        {
+            case 3:
+                // Re-display the board on explicit player request
+                std::cout << "\n  Current Scrabble Board:\n";
+                scrabble.display(std::cout);
+                break;
+
+            case 6:
+            {
+                bool confirmed = ConsoleUtils::readYesNo("  Quit to main menu? No score will be recorded.");
+                if (confirmed)
+                {
+                    state = GameState::Menu;
+                }
+                break;
+            }
+
+            default:
+                // Any other number is not a valid option in this commit
+                std::cout << "  That option is not available yet. Use [3] or [6].\n";
+                break;
+        }
+    }
+}
+
+// handleNewGame() runs the full New Game flow: get a name, call beginRound(),
+// then hand control to the in-game loop.
+void GameEngine::handleNewGame()
+{
+    std::cout << "\n";
+    std::cout << "+============================================================+\n";
+    std::cout << "|                      NEW GAME                              |\n";
+    std::cout << "+============================================================+\n";
+
+    // Collect and validate the detective's name
+    std::string detName = askDetectiveName();
+
+    if (ConsoleUtils::isInputClosed()) { return; }
+
+    // Set up the round -- this may throw GameException on data file errors
+    beginRound(detName);
+
+    // Enter the investigation loop
+    runInGameLoop();
+}
+
+// showMainMenu() prints the five menu options.
+void GameEngine::showMainMenu()
+{
+    std::cout << "\n";
+    std::cout << "+============================================================+\n";
+    std::cout << "|                      MAIN MENU                             |\n";
+    std::cout << "+============================================================+\n";
+    std::cout << "    [1] New Game\n";
+    std::cout << "    [2] View Leaderboard\n";
+    std::cout << "    [3] About\n";
+    std::cout << "    [4] Rules\n";
+    std::cout << "    [5] Exit\n";
+}
+
+// run() is the top-level program loop.  It shows the title + scenario text
+// once, then cycles through the main menu until the player chooses Exit.
+void GameEngine::run()
+{
+    // Title and scenario banner shown once per program run
+    std::cout << "\n";
+    std::cout << "+============================================================+\n";
+    std::cout << "|              THE LOCKER HEIST                              |\n";
+    std::cout << "+============================================================+\n";
+    std::cout << "\n";
+    std::cout << "  A priceless artefact has been stolen from the mansion of\n";
+    std::cout << "  Mr. Leonardo. Seven suspects live under the same roof.\n";
+    std::cout << "  Only one of them is the culprit -- and you must find out who.\n";
+    std::cout << "\n";
+
+    state = GameState::Menu;
+
+    while (state != GameState::Exit && !ConsoleUtils::isInputClosed())
+    {
+        showMainMenu();
+
+        int raw = ConsoleUtils::readIntInRange("\n  Choice: ", 1, 5);
+
+        if (ConsoleUtils::isInputClosed()) { break; }
+
+        MenuChoice choice = static_cast<MenuChoice>(raw);
+
+        try
+        {
+            switch (choice)
+            {
+                case MenuChoice::NewGame:
+                    handleNewGame();
+                    // After returning from a game, reset state to Menu
+                    if (state != GameState::Exit)
+                    {
+                        state = GameState::Menu;
+                    }
+                    break;
+
+                case MenuChoice::ViewLeaderBoard:
+                    showLeaderboard();
+                    break;
+
+                case MenuChoice::About:
+                    showAbout();
+                    break;
+
+                case MenuChoice::Rules:
+                    showRules();
+                    break;
+
+                case MenuChoice::Exit:
+                    state = GameState::Exit;
+                    std::cout << "\n  Thank you for playing The Locker Heist. Goodbye!\n\n";
+                    break;
+            }
+        }
+        catch (const GameException& ex)
+        {
+            // Data-load failures inside handleNewGame() are non-fatal at the menu level
+            std::cout << "\n  [Error] " << ex.getCategory() << ": " << ex.getMessage() << "\n";
+            state = GameState::Menu;
+        }
+    }
+}
+
+// ------------------------------------------------------------------
+// Read-only getter implementations
+// ------------------------------------------------------------------
+
+int GameEngine::getCulpritColumn() const
+{
+    return culpritColumn;
+}
+
+// getCharacter() returns a const pointer to the character at 0-based index i.
+// Throws InvalidPositionException if i is outside [0, CAST_SIZE).
+const Character* GameEngine::getCharacter(int i) const
+{
+    if (i < 0 || i >= CAST_SIZE)
+    {
+        throw InvalidPositionException(i + 1, CAST_SIZE);
+    }
+    return cast[i];
+}
+
+const Scrabble& GameEngine::getScrabble() const
+{
+    return scrabble;
+}
+
+const Cottage& GameEngine::getCottage() const
+{
+    return cottage;
+}
+
+const Detective& GameEngine::getDetective() const
+{
+    return detective;
+}
+
+const RulesConfig& GameEngine::getRules() const
+{
+    return rules;
 }

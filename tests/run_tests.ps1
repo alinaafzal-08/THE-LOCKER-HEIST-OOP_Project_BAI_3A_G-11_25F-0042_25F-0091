@@ -140,6 +140,120 @@ if (Test-Path $heistExe) {
 }
 
 # ================================================================
+# STEP 5: Run End-to-End (E2E) automated flow tests
+# ================================================================
+Step-Header "STEP 4: Run End-to-End (E2E) Tests"
+
+if (Test-Path $heistExe) {
+    function Run-E2E([string]$testName, [string]$inputFile, [string]$heistArgs, [string[]]$requiredStrings) {
+        Write-Host "  Running $testName..."
+        $scoreBoardFile = Join-Path $projDir "leader\scoreBoard.txt"
+        $scoreBoardBak  = Join-Path $projDir "leader\scoreBoard.txt.bak"
+        $hasBackup = $false
+        if (Test-Path $scoreBoardFile) {
+            Copy-Item $scoreBoardFile $scoreBoardBak -Force
+            $hasBackup = $true
+        }
+
+        $outLog = Join-Path $resultDir "$($testName).txt"
+        $testPassed = $true
+
+        Push-Location $projDir
+        try {
+            $fullInputPath = Join-Path $PSScriptRoot "inputs\$inputFile"
+            $output = $null
+            if ($heistArgs -ne "") {
+                $argList = $heistArgs -split ' '
+                $output = Get-Content $fullInputPath | & $heistExe $argList 2>&1
+            } else {
+                $output = Get-Content $fullInputPath | & $heistExe 2>&1
+            }
+
+            $output | Out-File -FilePath $outLog -Encoding UTF8
+
+            $outputText = ($output -join "`n")
+            foreach ($req in $requiredStrings) {
+                if ($outputText -notmatch [regex]::Escape($req)) {
+                    Write-Host "    [FAIL] Required text missing: '$req'" -ForegroundColor Red
+                    $testPassed = $false
+                }
+            }
+        }
+        catch {
+            Write-Host "    [FAIL] Exception during execution: $_" -ForegroundColor Red
+            $testPassed = $false
+        }
+        finally {
+            Pop-Location
+            if ($hasBackup -and (Test-Path $scoreBoardBak)) {
+                Copy-Item $scoreBoardBak $scoreBoardFile -Force
+                Remove-Item $scoreBoardBak -Force
+            }
+        }
+
+        if ($testPassed) {
+            Write-Host "  [PASS] $testName passed" -ForegroundColor Green
+        } else {
+            Write-Host "  [FAIL] $testName failed" -ForegroundColor Red
+            $script:overallFailed++
+        }
+    }
+
+    # E2E-01: Main menu navigation (About, Rules, Leaderboard, Exit)
+    Run-E2E "e2e01_menu" "e2e01_menu.txt" "" @(
+        "THE LOCKER HEIST",
+        "ABOUT THE GAME",
+        "GAME RULES",
+        "Max turns allowed",
+        "Agent_007",
+        "Goodbye"
+    )
+
+    # E2E-02: Name validation & space replacement
+    Run-E2E "e2e02_name_validation" "e2e02_name_validation.txt" "" @(
+        "Name cannot be empty",
+        "Name must not contain '|'",
+        "Your name contains spaces",
+        "A culprit has been secretly chosen. The game begins!",
+        "Credibility: 100",
+        "Quit to main menu? No score will be recorded",
+        "Goodbye"
+    )
+
+    # E2E-03: Forced culprits 1 to 7 game setup and clean quit
+    for ($c = 1; $c -le 7; $c++) {
+        Run-E2E "e2e03_culprit$c" "e2e03_quit.txt" "--culprit $c" @(
+            "A culprit has been secretly chosen. The game begins!",
+            "Quit to main menu? No score will be recorded",
+            "Goodbye"
+        )
+    }
+
+    # EOF handling: immediate EOF exits cleanly without hanging
+    Run-E2E "e2e_eof" "e2e_eof.txt" "" @(
+        "THE LOCKER HEIST"
+    )
+
+    # Invalid CLI argument: --culprit 9 prints usage and exits with error code
+    Write-Host "  Running CLI argument validation (--culprit 9)..."
+    Push-Location $projDir
+    try {
+        $badOutput = & $heistExe --culprit 9 2>&1
+        $badExit = $LASTEXITCODE
+        $badText = ($badOutput -join "`n")
+        if ($badExit -ne 0 -and $badText -match "Usage:") {
+            Write-Host "  [PASS] CLI validation (--culprit 9) exited non-zero with usage message" -ForegroundColor Green
+        } else {
+            Write-Host "  [FAIL] CLI validation (--culprit 9) did not report usage or exited 0" -ForegroundColor Red
+            $overallFailed++
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+# ================================================================
 # SUMMARY
 # ================================================================
 Write-Host ""

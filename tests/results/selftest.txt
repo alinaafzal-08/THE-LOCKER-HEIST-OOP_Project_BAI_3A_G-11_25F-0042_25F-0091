@@ -323,3 +323,123 @@ Rack 2 (People): Rack: [A@1] [B@2] [C@3] [D@4] [E@5] [F@6] [G@7] [H@8]
   Result: 41 passed, 0 failed.
 ========================================
 
+
+========================================
+  ST-08  GameEngine & Round Setup Self-Test
+========================================
+  [PASS] ST-08: GameEngine::getInstance() returns identical memory address
+  [PASS] ST-08: GameEngine::destroyInstance() and re-instantiation succeeds cleanly
+
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+  [PASS] ST-08: Forced culprit column correctly configured in GameEngine
+  [PASS] ST-08: Exactly one character marked as culprit in cast
+  [PASS] ST-08: Cast index 0 (Victim) is never marked as culprit
+  [PASS] ST-08: Culprit character role matches clue profile culpritRole
+  [PASS] ST-08: Scrabble target Word 1 matches culprit profile word1
+  [PASS] ST-08: Scrabble target Word 2 matches culprit profile word2
+  [PASS] ST-08: All cottage room clue letters match culprit column in locations.txt
+  [PASS] ST-08: Detective initialized with rules starting credibility
+  [PASS] ST-08: Detective initialized with sanitized detective name
+
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+  [PASS] ST-08: Forced culprit column correctly configured in GameEngine
+  [PASS] ST-08: Exactly one character marked as culprit in cast
+  [PASS] ST-08: Cast index 0 (Victim) is never marked as culprit
+  [PASS] ST-08: Culprit character role matches clue profile culpritRole
+  [PASS] ST-08: Scrabble target Word 1 matches culprit profile word1
+  [PASS] ST-08: Scrabble target Word 2 matches culprit profile word2
+  [PASS] ST-08: All cottage room clue letters match culprit column in locations.txt
+  [PASS] ST-08: Detective initialized with rules starting credibility
+  [PASS] ST-08: Detective initialized with sanitized detective name
+
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+  [PASS] ST-08: Forced culprit column correctly configured in GameEngine
+  [PASS] ST-08: Exactly one character marked as culprit in cast
+  [PASS] ST-08: Cast index 0 (Victim) is never marked as culprit
+  [PASS] ST-08: Culprit character role matches clue profile culpritRole
+  [PASS] ST-08: Scrabble target Word 1 matches culprit profile word1
+  [PASS] ST-08: Scrabble target Word 2 matches culprit profile word2
+  [PASS] ST-08: All cottage room clue letters match culprit column in locations.txt
+  [PASS] ST-08: Detective initialized with rules starting credibility
+  [PASS] ST-08: Detective initialized with sanitized detective name
+
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+  [PASS] ST-08: Forced culprit column correctly configured in GameEngine
+  [PASS] ST-08: Exactly one character marked as culprit in cast
+  [PASS] ST-08: Cast index 0 (Victim) is never marked as culprit
+  [PASS] ST-08: Culprit character role matches clue profile culpritRole
+  [PASS] ST-08: Scrabble target Word 1 matches culprit profile word1
+  [PASS] ST-08: Scrabble target Word 2 matches culprit profile word2
+  [PASS] ST-08: All cottage room clue letters match culprit column in locations.txt
+  [PASS] ST-08: Detective initialized with rules starting credibility
+  [PASS] ST-08: Detective initialized with sanitized detective name
+
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+  [PASS] ST-08: Forced culprit column correctly configured in GameEngine
+  [PASS] ST-08: Exactly one character marked as culprit in cast
+  [PASS] ST-08: Cast index 0 (Victim) is never marked as culprit
+  [PASS] ST-08: Culprit character role matches clue profile culpritRole
+  [PASS] ST-08: Scrabble target Word 1 matches culprit profile word1
+  [PASS] ST-08: Scrabble target Word 2 matches culprit profile word2
+  [PASS] ST-08: All cottage room clue letters match culprit column in locations.txt
+  [PASS] ST-08: Detective initialized with rules starting credibility
+  [PASS] ST-08: Detective initialized with sanitized detective name
+
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+  [PASS] ST-08: Forced culprit column correctly configured in GameEngine
+  [PASS] ST-08: Exactly one character marked as culprit in cast
+  [PASS] ST-08: Cast index 0 (Victim) is never marked as culprit
+  [PASS] ST-08: Culprit character role matches clue profile culpritRole
+  [PASS] ST-08: Scrabble target Word 1 matches culprit profile word1
+  [PASS] ST-08: Scrabble target Word 2 matches culprit profile word2
+  [PASS] ST-08: All cottage room clue letters match culprit column in locations.txt
+  [PASS] ST-08: Detective initialized with rules starting credibility
+  [PASS] ST-08: Detective initialized with sanitized detective name
+
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+  [PASS] ST-08: Forced culprit column correctly configured in GameEngine
+  [PASS] ST-08: Exactly one character marked as culprit in cast
+  [PASS] ST-08: Cast index 0 (Victim) is never marked as culprit
+  [PASS] ST-08: Culprit character role matches clue profile culpritRole
+  [PASS] ST-08: Scrabble target Word 1 matches culprit profile word1
+  [PASS] ST-08: Scrabble target Word 2 matches culprit profile word2
+  [PASS] ST-08: All cottage room clue letters match culprit column in locations.txt
+  [PASS] ST-08: Detective initialized with rules starting credibility
+  [PASS] ST-08: Detective initialized with sanitized detective name
+  [PASS] ST-08: setForcedCulprit(0) throws InvalidInputException
+  [PASS] ST-08: setForcedCulprit(8) throws InvalidInputException
+  [PASS] ST-08: sanitiseName("") throws InvalidInputException
+  [PASS] ST-08: sanitiseName replaces space with underscore
+  [PASS] ST-08: sanitiseName replaces space with dot
+  [PASS] ST-08: sanitiseName rejects pipe '|' character
+  [PASS] ST-08: sanitiseName accepts exactly 20-character name
+  [PASS] ST-08: sanitiseName rejects 21-character name
+  [PASS] ST-08: loadRulesOrDefaults sets usedDefaults=true for missing file
+  [PASS] ST-08: loadRulesOrDefaults returns standard default rules on missing file
+  [PASS] ST-08: loadRulesOrDefaults sets usedDefaults=true for corrupt rules file
+  [PASS] ST-08: loadRulesOrDefaults falls back to default rules on corrupt file
+----------------------------------------
+  Result: 77 passed, 0 failed.
+========================================
+

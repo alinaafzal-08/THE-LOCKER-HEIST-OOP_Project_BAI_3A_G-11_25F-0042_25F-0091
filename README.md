@@ -60,8 +60,9 @@ This script:
 ```powershell
 # From inside the TheLockerHeist folder:
 cd TheLockerHeist
-..\x64\Debug\heist.exe             # loads and verifies all data files (Commit 2, 3, 4, 5, & 6)
-..\x64\Debug\heist.exe --selftest  # executes ST-01, ST-02, ST-03, ST-04, ST-05, and ST-06 self-tests
+..\x64\Debug\heist.exe               # starts interactive GameEngine main menu (Commit 8)
+..\x64\Debug\heist.exe --selftest    # executes ST-01 through ST-08 self-tests
+..\x64\Debug\heist.exe --culprit 1   # runs game forcing Cook (column 1) as culprit
 ```
 
 ---
@@ -96,9 +97,17 @@ The-Locker-Heist-OOP-Project\
 └── tests\
     ├── verify_data_files.ps1           # validates all data files
     ├── run_tests.ps1                   # builds + runs all tests
+    ├── inputs\                         # automated E2E stdin test scripts
+    │   ├── e2e01_menu.txt
+    │   ├── e2e02_name_validation.txt
+    │   ├── e2e03_quit.txt
+    │   └── e2e_eof.txt
     └── results\
         ├── .gitkeep                   # keeps results folder in version control
-        └── selftest.txt               # logged self-test run output
+        ├── selftest.txt               # logged self-test run output
+        ├── e2e01_menu.txt             # logged E2E-01 menu navigation output
+        ├── e2e02_name_validation.txt  # logged E2E-02 name validation output
+        └── e2e03_culprit*.txt         # logged E2E-03 culprit runs output
 ```
 
 ---
@@ -139,11 +148,13 @@ generated code. The team is fully responsible for the final submission.
 | **ST-04** | Module 4 & 5 (TileRack parallel arrays, Scrabble jagged 2D array, Raw DMA, Deep Copy, Bounds, Exceptions) | 39 / 39 PASS |
 | **ST-05** | Module 4 & 5 (Cottage raw DMA array of pointers, Detective composed racks, Word 1 search & verification) | 34 / 34 PASS |
 | **ST-06** | Module 8 (DynamicArray<T> generic container, auto-doubling, deep copy, refactored TileRack/Scrabble/Cottage) | 29 / 29 PASS |
-| **ST-07** | Module 6 & 11 (ScoreBoard persistence & ASCII table, equality operators, TileRack::operator+ with selection sort & clue text, friend stream operators) | 36 / 36 PASS |
+| **ST-07** | Module 6 & 11 (ScoreBoard persistence & ASCII table, equality operators, TileRack::operator+ with selection sort & clue text, friend stream operators) | 41 / 41 PASS |
+| **ST-08** | Module 2 & 12 (GameEngine Singleton, forced culprit setup 1-7, cast construction, Cottage & Scrabble target synchronization, sanitiseName, loadRulesOrDefaults) | 77 / 77 PASS |
+| **E2E Tests** | Automated end-to-end flow tests (E2E-01 menu nav, E2E-02 name validation, E2E-03 culprit 1-7 round starts, EOF handling, CLI validation) | 11 / 11 PASS |
 
 ---
 
 ## Known Limitations
 
 - Visual Studio MSVC is not yet installed on this workstation environment; automated tests run through `g++` (C++17) during local testing, producing identical standard-compliant behavior.
-- In-game menus and game loop are scheduled for Commit 8. Currently, executing `heist.exe` without flags verifies the authentic dataset and prints status.
+- In-game investigation actions ([1] Search Location, [2] Interview Suspect, [4] Solve Word, [5] Accuse) are scheduled for Commits 9–11. Commit 8 provides full main menu navigation, New Game set-up with random/forced culprit, view board [3], and quit [6].

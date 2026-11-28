@@ -1,0 +1,56 @@
+﻿
++============================================================+
+|              THE LOCKER HEIST                              |
++============================================================+
+
+  A priceless artefact has been stolen from the mansion of
+  Mr. Leonardo. Seven suspects live under the same roof.
+  Only one of them is the culprit -- and you must find out who.
+
+
++============================================================+
+|                      MAIN MENU                             |
++============================================================+
+    [1] New Game
+    [2] View Leaderboard
+    [3] About
+    [4] Rules
+    [5] Exit
+
+  Choice: 
++============================================================+
+|                      NEW GAME                              |
++============================================================+
+  Enter your detective name: 
++============================================================+
+|   A culprit has been secretly chosen. The game begins!     |
++============================================================+
+
+
+------------------------------------------------------------
+  Credibility: 100  |  Turns used: 0
+------------------------------------------------------------
+Rack 1 (Locations): Rack: (empty)
+Rack 2 (People): Rack: (empty)
+
+  Scrabble Board:
+Word 1: [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+Word 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+
+  What would you like to do?
+    [3] View Scrabble Board
+    [6] Quit to main menu
+
+  Choice:   Quit to main menu? No score will be recorded. (y/n): 
++============================================================+
+|                      MAIN MENU                             |
++============================================================+
+    [1] New Game
+    [2] View Leaderboard
+    [3] About
+    [4] Rules
+    [5] Exit
+
+  Choice: 
+  Thank you for playing The Locker Heist. Goodbye!
+

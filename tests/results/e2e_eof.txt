@@ -1,0 +1,20 @@
+﻿
++============================================================+
+|              THE LOCKER HEIST                              |
++============================================================+
+
+  A priceless artefact has been stolen from the mansion of
+  Mr. Leonardo. Seven suspects live under the same roof.
+  Only one of them is the culprit -- and you must find out who.
+
+
++============================================================+
+|                      MAIN MENU                             |
++============================================================+
+    [1] New Game
+    [2] View Leaderboard
+    [3] About
+    [4] Rules
+    [5] Exit
+
+  Choice: 

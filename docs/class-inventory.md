@@ -1,6 +1,6 @@
 # Class Inventory — The Locker Heist
 **Binding architecture contract.  Names, visibilities, and relationships here govern every commit.**
-Last updated: Commit 7 (Alina Afzal, 25F-0042).
+Last updated: Commit 8 (Samreen Kousar, 25F-0091).
 
 ---
 
@@ -49,34 +49,29 @@ GameException (protected: message, errorCode; virtual ~GameException(); getMessa
 
 ---
 
-## Utilities — Implemented in Commit 2 & 7 (Module 6)
+## Utilities — Implemented in Commit 2, 7 & 8 (Module 6)
 
 | Class | Kind | Responsibility & Methods |
 |-------|------|--------------------------|
 | `StringUtils` | `static` | `trim()`, `splitByDelimiter()`, `toUpperCase()`, `isAllLetters()`, `isSingleLetter()`, `parseInt()`, `intToString()`, `padWithZeros()`, `equalsIgnoreCase()`, `replaceChar()`, `underscoreToSpace()`, `spaceToUnderscore()`, `currentDateDDMMYY()`, `formatPersonName()`, `formatPlaceName()`. Implemented without `<cctype>`, `<algorithm>`, or `<sstream>`. |
 | `DataLoader` | `static` | Constants: `FILE_RULES`, `FILE_CLUE`, `FILE_LOCATIONS`, `FILE_CHARACTERS`, `FILE_ABOUT`, `FILE_SCOREBOARD`. Dimensions: `ROLE_COUNT=7`, `LOCATION_COUNT=7`, `CHARACTER_COUNT=8`, `WORD1_LENGTH=7`, `WORD2_LENGTH=8`. Methods: `loadRules()`, `loadClueProfiles()`, `loadLocations()`, `loadCharacters()`, `loadAboutText()`, `validateConsistency()`, `roleToColumn()`. Strictly validates data format and throws `FileNotFoundException` or `FileCorruptException`. |
 | `ScoreBoard` | `class` | `filePath; ScoreBoard(path); addScore(name, won, cred, turns, culprit, date); displayAll(out); getEntryCount(); getFilePath();`. Appends records in strict format `Detective|Result|Credibility|Turns_Left|Culprit|Date`, auto-pads turns to two digits, converts culprit spaces to underscores, renders ASCII table (underscores displayed as spaces). Associated with `GameEngine` (main owns instance, engine holds pointer). Implemented in Commit 7. |
-
-### Scheduled for Commit 8
-
-| Class | Kind | Responsibility |
-|-------|------|---------------|
-| `ConsoleUtils` | `static` | ASCII borders, screen-clear (system()), menu rendering |
+| `ConsoleUtils` | `static` | `clearScreen()`, `readLine(prompt)`, `readIntInRange(prompt, min, max)`, `readYesNo(prompt)`, `isInputClosed()`. Centralizes terminal I/O, EOF tracking for automated test scripts, validated numeric range entry and confirmation loops. Implemented in Commit 8. |
 
 ---
 
-## Character Hierarchy — Implemented in Commit 3 (Module 3 & 9)
+## Character Hierarchy — Implemented in Commit 3 & Extended in Commit 8 (Module 3 & 9)
 
 ```
 Character  [abstract; private: characterName, characterRole, nationality, isCulprit, liveCount; friend GameEngine; friend operator<<; friend operator>>]
 │  pure virtual: display(std::ostream&) const
 │  virtual:      getMinimumCredibility(); hasClue(); getClue()
 │  static:       getLiveCount()
-│  friend:       GameEngine (access to private fields, exercised in Commit 8)
+│  friend:       GameEngine (access to private fields, exercised in Commit 8 to set isCulprit)
 │  friend:       operator>> (direct assignment to private characterName)
 │  friend:       operator<< (polymorphic stream output via virtual display)
 │
-├── Victim             [minCred: 80; overrides hasClue (true), getClue (Word2), display]
+├── Victim             [minCred: 80; static const MIN_CREDIBILITY_INTERVIEW = 80; overrides hasClue (true), getClue (Word2), display]
 ├── Detective          [credibility, turns, dynamic string* solvedWords[2], composed TileRack locationRack (cap 7) & characterRack (cap 8); deep copy ctor & op=; Malay default; minCred: 0]
 └── Suspect            [abstract; public Character; private: letterClueChar, boardPosChar, clueRowChar; hasClue (true), getClue]
     ├── HouseHelp      [public Suspect; minCred: 0]
@@ -85,13 +80,38 @@ Character  [abstract; private: characterName, characterRole, nationality, isCulp
     │   └── Servant    [public HouseHelp; minCred: 0]
     ├── BusinessRelations  [virtual public Suspect; minCred: 0]
     ├── CloseRelations     [virtual public Suspect; minCred: 0]
-    ├── Partner        [public BusinessRelations; partnerNumber (1 or 2); minCred: 50]
-    ├── PA             [public BusinessRelations, public CloseRelations; diamond resolved via virtual Suspect; minCred: 35]
-    └── Child          [public CloseRelations; static const DEFAULT_AGE=17; age validated 15-19; minCred: 75]
+    ├── Partner        [public BusinessRelations; partnerNumber (1 or 2); static const MIN_CREDIBILITY_INTERVIEW = 50; minCred: 50]
+    ├── PA             [public BusinessRelations, public CloseRelations; diamond resolved via virtual Suspect; static const MIN_CREDIBILITY_INTERVIEW = 35; minCred: 35]
+    └── Child          [public CloseRelations; static const DEFAULT_AGE=17; static const MIN_CREDIBILITY_INTERVIEW = 75; age validated 15-19; minCred: 75]
 ```
 
 **CharacterFactory** — `static Character* create(const CharacterRecord& record, int culpritColumn);`
 Sole polymorphic construction hub based on role strings; throws `InvalidInputException` for unknown roles.
+
+---
+
+## Game Engine & Architecture — Implemented in Commit 8 (Modules 2 & 12)
+
+### `GameEngine` (Singleton Pattern)
+
+`GameEngine` controls the full game cycle: main menu navigation, round initialization, culprit selection, and the active investigation loop.
+
+- **Singleton Lifetime**: Private constructor and destructor; copy constructor and assignment operator deleted (`= delete`). Accessed globally via `GameEngine::getInstance()`. Cleanly destroyed via `GameEngine::destroyInstance()` before stack variables in `main()` are unwound.
+- **Relationships**:
+  - **COMPOSITION**: Engine directly owns and manages the lifecycle of:
+    - `Detective detective` (investigator state and racks)
+    - `Cottage cottage` (mansion rooms and clue state)
+    - `Scrabble scrabble` (two-row crossword clue grid)
+    - `TileRack combinedClue` (merged rack capacity 16 = 7 + 1 + 8)
+    - `Character* cast[8]` (polymorphic array of 8 heap-allocated characters, deleted in engine dtor)
+  - **ASSOCIATION**: Engine holds a pointer `ScoreBoard* scoreBoard` passed via `attachScoreBoard(&scoreBoard)` from `main()`. The engine queries and displays the leaderboard but never deletes the scoreboard instance.
+- **Key Methods**:
+  - `void run()`: Top-level menu loop (New Game, Leaderboard, About, Rules, Exit). Catches `GameException` gracefully without crashing.
+  - `void beginRound(const std::string& detectiveName)`: Loads data files, validates consistency, selects culprit (forced or `rand() % 7`), constructs cast via `CharacterFactory`, sets `isCulprit` on the culprit suspect via friend access, builds Cottage and Scrabble models, initializes Detective.
+  - `void setForcedCulprit(int oneToSeven)`: Sets predetermined culprit column (1=Cook ... 7=Child) for automated testing. Throws `InvalidInputException` for out-of-range values.
+  - `static std::string sanitiseName(const std::string& raw, char spaceReplacement)`: Validates length (1-20), rejects pipe '|' and control characters, replaces spaces with user-chosen character.
+  - `static RulesConfig loadRulesOrDefaults(const std::string& path, bool& usedDefaults)`: Loads rules or safely falls back to defaults on file missing/corrupt.
+  - Getters: `getCulpritColumn()`, `getCharacter(i)`, `getScrabble()`, `getCottage()`, `getDetective()`, `getRules()`.
 
 ---
 

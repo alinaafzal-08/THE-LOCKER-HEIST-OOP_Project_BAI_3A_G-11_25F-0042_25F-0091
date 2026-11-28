@@ -1,0 +1,125 @@
+﻿
++============================================================+
+|              THE LOCKER HEIST                              |
++============================================================+
+
+  A priceless artefact has been stolen from the mansion of
+  Mr. Leonardo. Seven suspects live under the same roof.
+  Only one of them is the culprit -- and you must find out who.
+
+
++============================================================+
+|                      MAIN MENU                             |
++============================================================+
+    [1] New Game
+    [2] View Leaderboard
+    [3] About
+    [4] Rules
+    [5] Exit
+
+  Choice: 
++============================================================+
+|          THE LOCKER HEIST  --  DETECTIVE GAME              |
++============================================================+
+
+  Developed By  :  Alina Afzal  |  25F-0042
+                   Samreen Kousar  |  25F-0091
+
+  Course        :  CL1004 Object Oriented Programming
+  Section       :  BAI - A
+  Semester      :  Fall 2026
+  Lab Instructor:  Sir Mozeb Ahmad Khan
+
++------------------------------------------------------------+
+|                    ABOUT THE GAME                          |
++------------------------------------------------------------+
+
+  The Locker Heist is a console-based detective mystery game.
+  A priceless artefact has been stolen from the mansion of
+  Mr. Leonardo. Seven suspects live under the same roof. Only
+  one of them is the culprit -- and you must find out who.
+
++------------------------------------------------------------+
+|                      YOUR MISSION                          |
++------------------------------------------------------------+
+
+  1. Search the mansion's locations for hidden letter clues.
+  2. Interview the suspects to gather more evidence.
+  3. Use the clues to form two secret words on your Tile Rack.
+  4. Identify the culprit from the word pair you have built.
+  5. Make your accusation before your credibility runs out.
+
++------------------------------------------------------------+
+|                     HOW TO BEGIN                           |
++------------------------------------------------------------+
+
+  From the Main Menu select:
+    [1] New Game      -- start a fresh investigation
+    [2] Leaderboard   -- see the top detectives
+    [3] About         -- you are reading this now
+    [4] Rules         -- game rules and scoring details
+    [5] Exit          -- quit the program
+
+  Good luck, Detective. The truth is hidden in the words.
+
++============================================================+
+
+
++============================================================+
+|                      MAIN MENU                             |
++============================================================+
+    [1] New Game
+    [2] View Leaderboard
+    [3] About
+    [4] Rules
+    [5] Exit
+
+  Choice: 
++============================================================+
+|                      GAME RULES                            |
++============================================================+
+
+  Max turns allowed  : 25
+  Starting credibility: 100
+  Wrong turn penalty : 5 credibility points
+  Wrong word penalty : 10 credibility points
+  Win condition      : Accuse_Correct_Culprit
+  Lose condition     : Credibility_Zero_Or_Turns_Exhausted
+
+  Interview credibility thresholds:
+    Victim (Mr. Leonardo)  : 80
+    Partner (Ms./Mr.)      : 50
+    Personal Assistant     : 35
+    Child (Ms. Celine)     : 75
+    House Help (Cook/Guard/Servant): no minimum
+
+  Press Enter to continue...
++============================================================+
+|                      MAIN MENU                             |
++============================================================+
+    [1] New Game
+    [2] View Leaderboard
+    [3] About
+    [4] Rules
+    [5] Exit
+
+  Choice: 
++------------------+----------+---------------+--------------+----------------+------------+
+| Detective        | Result   | Credibility   | Turns Left   | Culprit        | Date       |
++------------------+----------+---------------+--------------+----------------+------------+
+| Agent_007        | LOSE     | 0             | 05           | Servant        | 11-10-26   |
+| Insp.Jamshad     | WIN      | 35            | 07           | Partner 2      | 10-10-26   |
++------------------+----------+---------------+--------------+----------------+------------+
+
++============================================================+
+|                      MAIN MENU                             |
++============================================================+
+    [1] New Game
+    [2] View Leaderboard
+    [3] About
+    [4] Rules
+    [5] Exit
+
+  Choice: 
+  Thank you for playing The Locker Heist. Goodbye!
+
